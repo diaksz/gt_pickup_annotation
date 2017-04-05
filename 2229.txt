@@ -1,0 +1,7 @@
+row 1: slot (x,y,theta)
+row 2: section (x,y,theta)
+row 3: is_problematic,is_verified
+directory of mask file: initMasks.mat
+8.80 7.70 10.00
+1.00 2.00 3.00
+-1 1
