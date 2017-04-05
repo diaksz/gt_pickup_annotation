@@ -16,18 +16,24 @@ h_ax = axes('Position',ax_pos);
 % axes(h_ax);
 
 %% Set paths and load mask and image
+% master path
+masterPath = 'C:\Users\akuan\Dropbox (HMS)\htem_team\projects\PPC_project\stainingImages';
+
 % saved mask templates for slot and section, respectively, in txt
-slot_mask_file = 'masks\slot_mask.txt';
-section_mask_file = 'masks\section_mask2.txt';
+slot_mask_file = [masterPath '\masks\' '170404_slot_mask.txt'];
+section_mask_file = [masterPath '\masks\' '170404_section_mask2.txt'];
 setappdata(hfig,'slot_mask_file',slot_mask_file);
 setappdata(hfig,'section_mask_file',section_mask_file);
 
 % output of annotation, in txt
-outputPath = 'output'; % saves annotated relative positions to txt, for each individual section
+outputPath = [masterPath '\annotations']; % saves annotated relative positions to txt, for each individual section
+if exist(outputPath,'dir')~=7
+    mkdir(outputPath);
+end
 setappdata(hfig,'outputPath',outputPath);
 
 % image folder
-imPath = 'ppc0_links'; % contains images of individual sections
+imPath = [masterPath '\ppc0_links']; % contains images of individual sections
 ParseImageDir(hfig,imPath);
 
 %% Init section

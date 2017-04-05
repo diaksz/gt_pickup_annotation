@@ -10,75 +10,50 @@ hold off; axis off
 
 % init GUI drawing axes
 ax_pos = [0.1, 0.1, 0.8, 0.7];
-setappdata(hfig,'ax_pos',ax_pos);
+% setappdata(hfig,'ax_pos',ax_pos);
+figure(hfig);
+h_ax = axes('Position',ax_pos);
+% axes(h_ax);
 
-%% Load??
-% loas previously saved mask templates for slot and sample
-load('initMasks.mat','pos_slot_init','pos_sample_init');
-setappdata(hfig,'pos_slot_init',pos_slot_init);
-setappdata(hfig,'pos_sample_init',pos_sample_init);
+%% Set paths and load mask and image
+% master path
+masterPath = 'C:\Users\akuan\Dropbox (HMS)\htem_team\projects\PPC_project\stainingImages';
 
-% Init?
-setappdata(hfig,'pos_slot',pos_slot_init);
-setappdata(hfig,'pos_sample',pos_sample_init);
+% saved mask templates for slot and section, respectively, in txt
+slot_mask_file = [masterPath '\masks\' '170404_slot_mask.txt'];
+section_mask_file = [masterPath '\masks\' '170404_section_mask2.txt'];
+setappdata(hfig,'slot_mask_file',slot_mask_file);
+setappdata(hfig,'section_mask_file',section_mask_file);
 
-%% Set path
-imPath = 'C:\Users\Xiu\Dropbox (Personal)\EM_ppc';
-setappdata(hfig,'imPath',imPath);
+% output of annotation, in txt
+outputPath = [masterPath '\annotations']; % saves annotated relative positions to txt, for each individual section
 
-%% screen for valid images in given dir [parse imList]
-imList = dir(fullfile(imPath, '*png'));
-numFiles0 = length(imList);
+setappdata(hfig,'outputPath',outputPath);
 
-fileIDs = zeros(numFiles0,1);
-validIX = 1:numFiles0;
+% image folder
+imPath = [masterPath '\ppc0_links']; % contains images of individual sections
+ParseImageDir(hfig,imPath);
 
-for i = 1:numFiles0
-    a = imList(i).name;
-    if length(a)>12 && strcmp(a(end-11:end),'_section.png')
-        str = a(end-15:end-12);
-        if str(1)=='_'
-            str(1) = [];
-        end
-        C = textscan(str,'%d');
-        fileIDs(i) = C{1};
-    else
-        validIX(i) = 0;
-        disp(['file ''',a,''' does not match expected file name format']);
-    end
-end
-
-numFiles = length(find(validIX));
-
-List = [];
-List.fileID = fileIDs(validIX);
-List.filename = {imList(validIX).name}';
-List.numFiles = numFiles;
-
-% init params
-relpos_slot_list = zeros(numFiles,2);
-relpos_sample_list = zeros(numFiles,2);
-List.relpos_slot = relpos_slot_list;
-List.relpos_sample = relpos_sample_list;
-
-setappdata(hfig,'List',List);
-setappdata(hfig,'numFiles',numFiles);
-
-S = [];
-S(numFiles).fileID = 0; % pre-allocating
-for i = 1:numFiles
-    X1 = fileIDs(validIX);
-    X2 = List.filename;
-    
-    S(i).fileID = X1(i);    
-    S(i).filename = X2{i};
-    S(i).slot.relpos = [0,0];
-    S(i).slot.relangle = 0;
-    S(i).sample.relpos = [0,0];
-    S(i).sample.relangle = 0;
-end
+%% Init section
+% load first section
+i_im = 1;
+setappdata(hfig,'i_im',i_im);
+secID = GetSectionIDfromCounter(hfig,i_im);
+S = ScanText_GTA(secID,outputPath,slot_mask_file,section_mask_file);
 setappdata(hfig,'S',S);
+LoadNewMask(hfig,slot_mask_file,section_mask_file);
 
+% structure for individual slots:
+% S = [];
+% S.secID = secID;
+% S.maskFile = maskFile;
+% S.slot.translation = [0,0];
+% S.slot.rotation = 0;
+% S.section.translation = [0,0];
+% S.section.rotation = 0;
+% S.is_problematic = 0;
+% S.is_verified = 0;
+   
 %% Create UI controls
 set(gcf,'DefaultUicontrolUnits','normalized');
 set(gcf,'defaultUicontrolBackgroundColor',[1 1 1]);
@@ -101,7 +76,7 @@ bwidth = 0.03;
 grid = 0:bwidth+0.001:1;
 
 %% handles
-global h_i_im
+global h_i_im h_secID h_imdir h_outputdir h_probflag h_verflag
 
 %% UI ----- tab one ----- (General)
 i_tab = 1;
@@ -110,22 +85,43 @@ i_tab = 1;
 i_row = 1;
 i = 1;n = 0;
 
-
 i=i+n;
 n=2; % saves both to workspace and to 'VAR_current.mat' and to arc folder
-uicontrol('Parent',tab{i_tab},'Style','pushbutton','String','Save to file',...
+uicontrol('Parent',tab{i_tab},'Style','pushbutton','String','Set output dir',...
     'Position',[grid(i) yrow(i_row) bwidth*n rheight],...
-    'Callback',@pushbutton_savePosToFile_Callback);
+    'Callback',@pushbutton_getoutputdir_Callback);
 
 i=i+n;
-n=2; % saves both to workspace and to 'VAR_current.mat' and to arc folder
-uicontrol('Parent',tab{i_tab},'Style','pushbutton','String','Save a Copy',...
+n=6;
+h_outputdir = uicontrol('Parent',tab{i_tab},'Style','edit',...
     'Position',[grid(i) yrow(i_row) bwidth*n rheight],...
-    'Callback',@pushbutton_savePosToFileCopy_Callback);
+    'String',outputPath,'enable', 'off');
 
 i=i+n;
 n=2;
-uicontrol('Parent',tab{i_tab},'Style','text','String','Current section#:',...
+uicontrol('Parent',tab{i_tab},'Style','pushbutton','String','Set image dir',...
+    'Position',[grid(i) yrow(i_row) bwidth*n rheight],...
+    'Callback',@pushbutton_getimagedir_Callback);
+
+i=i+n;
+n=6;
+h_imdir = uicontrol('Parent',tab{i_tab},'Style','edit',...
+    'Position',[grid(i) yrow(i_row) bwidth*n rheight],...
+    'String',imPath,'enable', 'off');
+
+i=i+n;
+n=2;
+uicontrol('Parent',tab{i_tab},'Style','pushbutton','String','Set mask files',...
+    'Position',[grid(i) yrow(i_row) bwidth*n rheight],...
+    'Callback',@pushbutton_getmasksdir_Callback);
+
+%% UI row 2: current section
+i_row = 2;
+i = 1;n = 0;
+
+i=i+n;
+n=2;
+uicontrol('Parent',tab{i_tab},'Style','text','String','Section count:',...
     'Position',[grid(i) yrow(i_row)-dTextHt bwidth*n rheight],'HorizontalAlignment','right');
 
 i=i+n;
@@ -134,100 +130,123 @@ h_i_im = uicontrol('Parent',tab{i_tab},'Style','edit',...
     'Position',[grid(i) yrow(i_row) bwidth*n rheight],...
     'Callback',@edit_imageCount_Callback);
 
+i=i+n;
+n=2;
+uicontrol('Parent',tab{i_tab},'Style','text','String','Section ID:',...
+    'Position',[grid(i) yrow(i_row)-dTextHt bwidth*n rheight],'HorizontalAlignment','right');
+
+i=i+n;
+n=2;
+h_secID = uicontrol('Parent',tab{i_tab},'Style','edit',...
+    'Position',[grid(i) yrow(i_row) bwidth*n rheight],...
+    'Callback',@edit_secID_Callback);
+
 i=i+n+1;
-n=3; % saves both to workspace and to 'VAR_current.mat' and to arc folder
+n=3;
 uicontrol('Parent',tab{i_tab},'Style','pushbutton','String','Previous(''Shift+rClick'')',...
     'Position',[grid(i) yrow(i_row) bwidth*n rheight],...
     'Callback',@pushbutton_loadPreviousImage_Callback);
 
 i=i+n;
-n=3; % saves both to workspace and to 'VAR_current.mat' and to arc folder
+n=3;
 uicontrol('Parent',tab{i_tab},'Style','pushbutton','String','Next(''Right Click'')',...
     'Position',[grid(i) yrow(i_row) bwidth*n rheight],...
     'Callback',@pushbutton_loadNextImage_Callback);
 
-%% UI row 2: slot mask
-i_row = 2;
-i = 1;n = 0;
-
-i=i+n;
-n=4; % saves both to workspace and to 'VAR_current.mat' and to arc folder
-uicontrol('Parent',tab{i_tab},'Style','pushbutton','String','Load slot mask',...
-    'Position',[grid(i) yrow(i_row) bwidth*n rheight],...
-    'Callback',@pushbutton_loadSlotMask_Callback);
-
-i=i+n;
-n=4; % saves both to workspace and to 'VAR_current.mat' and to arc folder
-uicontrol('Parent',tab{i_tab},'Style','pushbutton','String','Upate slot mask',...
-    'Position',[grid(i) yrow(i_row) bwidth*n rheight],...
-    'Callback',@pushbutton_updateSlotMask_Callback);
-
-i=i+n;
-n=2; % popupplot option: whether to plot behavior bar
-uicontrol('Parent',tab{i_tab},'Style','checkbox','String','Plot behavior','Value',1,...
-    'Position',[grid(i) yrow(i_row) bwidth*n rheight],...
-    'Callback',@checkbox_isShowSlotMask_Callback);
-
-%% UI row 3: sample mask
+%% UI row 3: create masks, and flags
 i_row = 3;
 i = 1;n = 0;
 
 i=i+n;
 n=4; % saves both to workspace and to 'VAR_current.mat' and to arc folder
-uicontrol('Parent',tab{i_tab},'Style','pushbutton','String','Load sample mask',...
+uicontrol('Parent',tab{i_tab},'Style','pushbutton','String','Make new slot mask',...
     'Position',[grid(i) yrow(i_row) bwidth*n rheight],...
-    'Callback',@pushbutton_loadSampleMask_Callback);
+    'Callback',@pushbutton_createSlotMask_Callback);
 
 i=i+n;
 n=4; % saves both to workspace and to 'VAR_current.mat' and to arc folder
-uicontrol('Parent',tab{i_tab},'Style','pushbutton','String','Update sample mask',...
+uicontrol('Parent',tab{i_tab},'Style','pushbutton','String','Make new section mask',...
     'Position',[grid(i) yrow(i_row) bwidth*n rheight],...
-    'Callback',@pushbutton_updateSampleMask_Callback);
+    'Callback',@pushbutton_createSectionMask_Callback);
 
 i=i+n;
-n=2; % popupplot option: whether to plot behavior bar
-uicontrol('Parent',tab{i_tab},'Style','checkbox','String','Plot behavior','Value',1,...
+n=3; % popupplot option: whether to plot behavior bar
+h_probflag = uicontrol('Parent',tab{i_tab},'Style','checkbox','String','problematic?','Value',0,...
     'Position',[grid(i) yrow(i_row) bwidth*n rheight],...
-    'Callback',@checkbox_isShowSampleMask_Callback);
+    'Callback',@checkbox_isProblematicFlag_Callback);
+
+i=i+n;
+n=3; % popupplot option: whether to plot behavior bar
+h_verflag = uicontrol('Parent',tab{i_tab},'Style','checkbox','String','verified?','Value',0,...
+    'Position',[grid(i) yrow(i_row) bwidth*n rheight],...
+    'Callback',@checkbox_isVerifiedFlag_Callback);
 
 %% Init load
-i_im = 1;
-setappdata(hfig,'i_im',i_im);
 LoadImage(hfig,i_im);
-h_i_im.String = num2str(i_im);
+
 end
 
 %% Callback functions for UI elements:
 
 %% ----- tab one ----- (General)
 
-%% row 1: File navigation
-
-function pushbutton_savePosToFile_Callback(hObject,~)
+%% row 1: file navigation
+function pushbutton_getimagedir_Callback(hObject,~)
 hfig = getParentFigure(hObject);
-i_im = getappdata(hfig,'i_im');
-SaveCurrentMasks(hfig,i_im);
+start_path = getappdata(hfig,'imPath');
+folder_name = uigetdir(start_path,'Choose folder containing images of sections');
 
-List = getappdata(hfig,'List');
-List.relpos_slot = getappdata(hfig,'relpos_slot_list');
-List.relpos_sample = getappdata(hfig,'relpos_sample_list');
-save('OUTPUT.mat','List');
+global h_imdir
+if folder_name~=0
+    imPath = folder_name;
+    ParseImageDir(hfig,imPath);
+    h_imdir.String = imPath;    
+    
+    % Load first image
+    i_im = 1;
+    setappdata(hfig,'i_im',i_im);
+    LoadImage(hfig,i_im);
+end
 end
 
-function pushbutton_savePosToFileCopy_Callback(hObject,~)
+function pushbutton_getmasksdir_Callback(hObject,~)
 hfig = getParentFigure(hObject);
-i_im = getappdata(hfig,'i_im');
-SaveCurrentMasks(hfig,i_im);
+[FileName1,PathName] = uigetfile('*.txt','Select the txt file for slot mask');
+slot_mask_file = fullfile(PathName,FileName1);
+[FileName2,PathName] = uigetfile('*.txt','Select the txt file for slot mask');
+section_mask_file = fullfile(PathName,FileName2);
 
-List = getappdata(hfig,'List');
-List.relpos_slot = getappdata(hfig,'relpos_slot_list');
-List.relpos_sample = getappdata(hfig,'relpos_sample_list');
-
-timestamp  = datestr(now,'mmddyy_HHMM');
-matname = ['OUTPUT_',timestamp,'.mat'];
-save(matname,'List');
+if isequal(FileName1,0) || isequal(FileName2,0),
+    disp('User selected Cancel')
+else
+    try
+        LoadNewMask(hfig,slot_mask_file,section_mask_file);
+        % reload current image
+        i_im = getappdata(hfig,'i_im');
+        LoadImage(hfig,i_im);
+        
+        % (set path if didn't crash)
+        setappdata(hfig,'slot_mask_file',slot_mask_file);
+        setappdata(hfig,'section_mask_file',section_mask_file);
+    catch
+        errordlg('failed to load new masks');
+    end
+end
 end
 
+function pushbutton_getoutputdir_Callback(hObject,~)
+hfig = getParentFigure(hObject);
+start_path = getappdata(hfig,'outputPath');
+folder_name = uigetdir(start_path,'Choose folder in which to save alignment info (txt files)');
+
+global h_outputdir
+if folder_name~=0
+    h_outputdir.String = imPath;
+    setappdata(hfig,'outputPath',folder_name);
+end
+end
+
+%% row 2: current section
 function edit_imageCount_Callback(hObject,~)
 hfig = getParentFigure(hObject);
 % get/format range
@@ -236,6 +255,19 @@ if ~isempty(str),
     C = textscan(str,'%d');
     i_im = C{1}; % C{:};
     
+    LoadImage(hfig,i_im);
+end
+end
+
+function edit_secID_Callback(hObject,~)
+hfig = getParentFigure(hObject);
+% get/format range
+str = get(hObject,'String');
+if ~isempty(str),
+    C = textscan(str,'%d');
+    secID = C{1}; % C{:};
+    
+    i_im = GetCounterFromSectionID(hfig,secID);
     LoadImage(hfig,i_im);
 end
 end
@@ -250,118 +282,98 @@ hfig = getParentFigure(hObject);
 LoadNextImage(hfig);
 end
 
-%% row 2: slot masks
-function pushbutton_loadSlotMask_Callback(hObject,~)
+%% row 3: create masks, flags
+
+function pushbutton_createSlotMask_Callback(hObject,~)
 hfig = getParentFigure(hObject);
-masktypeID = 1;
-LoadMask(hfig,masktypeID);
+h = impoly;
+setColor(h,[1 1 1]);
+wait(h); % double click to finalize position!
+% update finalized polygon in red color
+setColor(h,[1 0 0]);
+
+pos = getPosition(h);
+
+% save to file
+[file,path] = uiputfile('slot_mask.txt','Save file name');
+
+% write to file
+f = fullfile(path,file);
+setappdata(hfig,'slot_mask_file',f);
+
+% (write to txt)
+fileID = fopen(f,'wt');
+fprintf(fileID,'row: vertices; col: x & y coordinate');
+for i = 1:size(pos,1)
+    formatSpec = '%4.2f %4.2f\n';
+    fprintf(fileID,formatSpec,pos(i,1),pos(i,2));
+end
+fclose(fileID);
 end
 
-function pushbutton_updateSlotMask_Callback(hObject,~)
+function pushbutton_createSectionMask_Callback(hObject,~)
 hfig = getParentFigure(hObject);
+h = impoly;
+setColor(h,[1 1 1]);
+wait(h); % double click to finalize position!
+% update finalized polygon in red color
+setColor(h,[1 0 0]);
 
-% update mask position manually
-hpoly_slot = getappdata(hfig,'hpoly_slot');
-if isempty(hpoly_slot)
-    % just load slot mask
-    h_ax = getappdata(hfig,'h_ax');
-    axes(h_ax);
-    
-    pos_slot_init = getappdata(hfig,'pos_slot_init');
-    hpoly_slot = impoly(h_ax, pos_slot_init);
-    
-    setappdata(hfig,'hpoly_slot',hpoly_slot);
+pos = getPosition(h);
+
+% save to file
+[file,path] = uiputfile('section_mask.txt','Save file name');
+
+% write to file
+f = fullfile(path,file);
+setappdata(hfig,'section_mask_file',f);
+
+% (write to txt)
+fileID = fopen(f,'wt');
+fprintf(fileID,'row: vertices; col: x & y coordinate\n');
+for i = 1:size(pos,1)
+    formatSpec = '%4.2f %4.2f\n';
+    fprintf(fileID,formatSpec,pos(i,1),pos(i,2));
 end
-setColor(hpoly_slot,[1 0 0]);
-wait(hpoly_slot); % double click to finalize position!
-% update finalized polygon in bright color
-setColor(hpoly_slot,[0 1 1]);
-pos = getPosition(hpoly_slot);
-
-% get relative position vector
-pos_slot_init = getappdata(hfig,'pos_slot_init');
-relposSlot = pos(1,:)-pos_slot_init(1,:);
-% save
-i_im = getappdata(hfig,'i_im');
-relpos_slot_list = getappdata(hfig,'relpos_slot_list');
-relpos_slot_list(i_im,:) = relposSlot;
-setappdata(hfig,'relpos_slot_list',relpos_slot_list);
+fclose(fileID);
 end
 
-function checkbox_isShowSlotMask_Callback(hObject,~)
+function checkbox_isProblematicFlag_Callback(hObject,~)
 hfig = getParentFigure(hObject);
-isShowMasks = getappdata(hfig,'isShowMasks');
-isShowMasks(1) = get(hObject,'Value');
-ShowMasks(hfig,isShowMasks);
-setappdata(hfig,'isShowMasks');
+S = getappdata(hfig,'S');
+S.is_problematic = get(hObject,'Value');
+setappdata(hfig,'S',S);
 end
 
-function ShowMasks(hfig,isShowMasks)
-i_im = getappdata(hfig,'i_im');
-LoadImage(hfig,i_im);
-if isShowMasks(1)
-    masktypeID = 1;
-    LoadMask(hfig,masktypeID);
-end
-if isShowMasks(2)
-    masktypeID = 1;
-    LoadMask(hfig,masktypeID);
-end
-end
-%% row 3: sample mask
-function pushbutton_loadSampleMask_Callback(hObject,~)
+function checkbox_isVerifiedFlag_Callback(hObject,~)
 hfig = getParentFigure(hObject);
-masktypeID = 2;
-LoadMask(hfig,masktypeID);
-end
-
-function pushbutton_updateSampleMask_Callback(hObject,~)
-hfig = getParentFigure(hObject);
-
-% update mask position manually
-hpoly_sample = getappdata(hfig,'hpoly_sample');
-if isempty(hpoly_sample)
-    % just load slot mask
-    h_ax = getappdata(hfig,'h_ax');
-    axes(h_ax);
-    
-    pos_sample_init = getappdata(hfig,'pos_sample_init');
-    hpoly_sample = impoly(h_ax, pos_sample_init);
-    
-    setappdata(hfig,'hpoly_sample',hpoly_sample);
-end
-setColor(hpoly_sample,[1 0 0]);
-wait(hpoly_sample); % double click to finalize position!
-% resume(h)
-% update finalized polygon in bright color
-setColor(hpoly_sample,[0 1 1]);
-pos = getPosition(hpoly_sample);
-
-% get relative position vector
-pos_sample_init = getappdata(hfig,'pos_sample_init');
-relposSample = pos(1,:)-pos_sample_init(1,:);
-% save
-i_im = getappdata(hfig,'i_im');
-relpos_sample_list = getappdata(hfig,'relpos_sample_list');
-relpos_sample_list(i_im,:) = relposSample;
-setappdata(hfig,'relpos_sample_list',relpos_sample_list);
+S = getappdata(hfig,'S');
+S.is_verified = get(hObject,'Value');
+setappdata(hfig,'S',S);
 end
 
 %% UI-level functions
 
 function KeyPressCallback(hfig, event)
+global h_probflag h_verflag
 masktypeID = getappdata(hfig,'masktypeID');
-if strcmp(event.Key,' ')
-    % switch between mask types (slot vs sample)
+if strcmp(event.Key,'space')
+    % switch between mask types (slot vs section)
+    masktypeID = ToggleSelectedMask(hfig);
     
-    masktypeID = getappdata(hfig,'masktypeID');
-    if masktypeID==1
-        setappdata(hfig,'masktypeID',2);
-    else
-        setappdata(hfig,'masktypeID',1);
-    end
-    ShowSelectedMask(hfig,masktypeID);
+    % flags
+elseif strcmp(event.Key,'p') % check 'is_problematic' flag
+    h_probflag.Value = 1;
+    S = getappdata(hfig,'S');
+    S.is_problematic = 1;
+    setappdata(hfig,'S',S);
 
+elseif strcmp(event.Key,'v') % check 'is_verified' flag    
+    h_verflag.Value = 1;
+    S = getappdata(hfig,'S');
+    S.is_verified = 1;
+    setappdata(hfig,'S',S);
+    
     % Translations
 
 elseif strcmp(event.Key,'a') % translation: left
@@ -408,61 +420,146 @@ end
 end
 
 function closefigure_Callback(hfig,~)
-relpos_slot_list = getappdata(hfig,'relpos_slot_list');
-relpos_sample_list = getappdata(hfig,'relpos_sample_list');
-
-List = getappdata(hfig,'List');
-List.relpos_slot = relpos_slot_list;
-List.relpos_sample = relpos_sample_list;
-setappdata(hfig,'List',List);
+SaveCurrentMasks(hfig);
 
 global EXPORT_autorecover;
 EXPORT_autorecover = getappdata(hfig);
-% h_impoly = getappdata(hfig,'h_impoly');
-clear h_impoly
 end
 
 %% Helper functions
 
-function ShowSelectedMask(hfig,masktypeID)
+function ParseImageDir(hfig,imPath)
+setappdata(hfig,'imPath',imPath);
+imList = dir(fullfile(imPath, '*png'));
+numFiles = length(imList);
 
+fileIDs = zeros(numFiles,1);
+% validIX = 1:numFiles0;
+try
+    for i = 1:numFiles
+        a = imList(i).name;
+        if length(a)>12 && strcmp(a(end-11:end),'_section.png')
+            str = a(end-15:end-12);
+            if str(1)=='_'
+                str(1) = [];
+            end
+            C = textscan(str,'%d');
+            fileIDs(i) = C{1};
+        else
+            %     if strcmp(a(end-3:end),'.png')
+            str = a(1:end-4);
+            C = textscan(str,'%d');
+            
+            fileIDs(i) = C{1};
+            
+            %     else
+            %         validIX(i) = 0;
+            %         disp(['file ''',a,''' does not match expected file name format']);
+        end
+    end
+catch
+    errordlg('folder contains files with unexpected file names');
+end
+% numFiles = length(find(validIX));
+[sectionIDs,IX] = sort(fileIDs);
+
+List = [];
+List.filenames = {imList(IX).name}';
+List.sectionIDs = sectionIDs;
+
+setappdata(hfig,'List',List);
+setappdata(hfig,'numFiles',numFiles);
+end
+    
+function secID = GetSectionIDfromCounter(hfig,i_im)
+List = getappdata(hfig,'List');
+secID = List.sectionIDs(i_im);
+setappdata(hfig,'secID',secID);
 end
 
-function SaveCurrentMasks(hfig,i_im_this)
-
-% slot
-pos = getappdata(hfig,'pos_slot');
-pos_init = getappdata(hfig,'pos_slot_init');
-relpos_slot_list = getappdata(hfig,'relpos_slot_list');
-relpos = pos(1,:)-pos_init(1,:);
-temp = relpos_slot_list(i_im_this,:);
-if ~isequal(temp,relpos)
-    relpos_slot_list(i_im_this,:) = relpos;
-    setappdata(hfig,'relpos_slot_list',relpos_slot_list);
+function i_im = GetCounterFromSectionID(hfig,secID)
+List = getappdata(hfig,'List');
+i_im = find(ismember(List.sectionIDs,secID),1,'first');
+if ~isempty(i_im)
+    setappdata(hfig,'i_im',i_im);
+else
+    i_im = getappdata(hfig,'i_im');
+    disp('section ID invalid - image not found');
+end
 end
 
-% sample
-pos = getappdata(hfig,'pos_sample');
-pos_init = getappdata(hfig,'pos_sample_init');
-relpos_sample_list = getappdata(hfig,'relpos_sample_list');
-relpos = pos(1,:)-pos_init(1,:);
-relpos_sample_list(i_im_this,:) = relpos;
-setappdata(hfig,'relpos_slot_list',relpos_sample_list);
+function SaveCurrentMasks(hfig)
+S = getappdata(hfig,'S');
+secID = getappdata(hfig,'secID');
+outputPath = getappdata(hfig,'outputPath');
 
+% update current pos stored in M (in case of unrecorded dragging of ROI)
+M = getappdata(hfig,'M');
+hpoly = getappdata(hfig,'hpoly');
+masktypeID = getappdata(hfig,'masktypeID');
+if ~isempty(hpoly) % (first load exception)
+    M(masktypeID).pos = getPosition(hpoly(masktypeID));
+    setappdata(hfig,'M',M);
+end
 
-% angle = getappdata(hfig,'angle');
+% update S data (relangle is updated directly through Rotation function)
+S.slot.translation = GetCenterPos(M(1).pos) - GetCenterPos(M(1).pos_init);
+S.section.translation = GetCenterPos(M(2).pos) - GetCenterPos(M(2).pos_init);
+
+setappdata(hfig,'S',S);
+
+% write to text file
+WriteToText_GTA(secID,S,outputPath);
 end
 
 function LoadImage(hfig,i_im)
 %% save mask positions for previous image
-i_im_this = getappdata(hfig,'i_im');
-SaveCurrentMasks(hfig,i_im_this);
+SaveCurrentMasks(hfig);
+
+%% load new file
+setappdata(hfig,'i_im',i_im); % set new image index
+secID = GetSectionIDfromCounter(hfig,i_im);
+
+% try to load txt data, if exist (otherwise just init)
+outputPath = getappdata(hfig,'outputPath');
+slot_mask_file = getappdata(hfig,'slot_mask_file');
+section_mask_file = getappdata(hfig,'section_mask_file');
+[S,tf] = ScanText_GTA(secID,outputPath,slot_mask_file,section_mask_file);
+setappdata(hfig,'S',S);
+
+%% set flags and set pos from file
+global h_probflag h_verflag
+
+% setup mask position from info saved in S
+if tf % (if annotation file exists)
+    disp([num2str(i_im),': sectionID = ',num2str(secID)]);
+    M = getappdata(hfig,'M');
+
+    [pos_slot,pos_section] = ReconstitutePos(S,M);
+    M(1).pos = pos_slot;
+    M(2).pos = pos_section;
+    
+    setappdata(hfig,'M',M);
+    
+    %% load flags
+    h_probflag.Value = S.is_problematic;
+    h_verflag.Value = S.is_verified;
+else
+    h_probflag.Value = 0;
+    h_verflag.Value = 0;
+end
+
+%% update GUI
+global h_i_im;
+h_i_im.String = num2str(i_im);
+
+global h_secID;
+h_secID.String = num2str(secID);
 
 %% load new image
-setappdata(hfig,'i_im',i_im); % set new image index
 imPath = getappdata(hfig,'imPath');
 List = getappdata(hfig,'List');
-im_raw = imread(fullfile(imPath,List.filename{i_im}));
+im_raw = imread(fullfile(imPath,List.filenames{i_im}));
 
 %% draw image
 % clean-up canvas
@@ -470,29 +567,28 @@ allAxesInFigure = findall(hfig,'type','axes');
 if ~isempty(allAxesInFigure)
     delete(allAxesInFigure);
 end
-ax_pos = getappdata(hfig,'ax_pos');
-figure(hfig);
-h_ax = axes('Position',ax_pos);
+% ax_pos = getappdata(hfig,'ax_pos');
+% figure(hfig);
+% h_ax = axes('Position',ax_pos);
+% h_ax = getappdata(hfig,'h_ax');
+axes(gca);
 imagesc(im_raw);
 axis equal; axis off
-setappdata(hfig,'im_raw',im_raw);
-setappdata(hfig,'h_ax',h_ax);
+% setappdata(hfig,'im_raw',im_raw);
+% setappdata(hfig,'h_ax',h_ax);
 
-%% draw masks??
+%% draw mask
+DrawNewMask(hfig);
 
 end
 
 function LoadPreviousImage(hfig)
-global h_i_im;
 i_im = getappdata(hfig,'i_im');
 if i_im > 1
-    LoadImage(hfig,i_im-1);
-    setappdata(hfig,'i_im',i_im-1);
-    
-    % update GUI
-    h_i_im.String = num2str(i_im-1);
+    i_im = i_im-1;
+    LoadImage(hfig,i_im);
 else
-    disp('reached 1st image');
+    msgbox('reached first image');
 end
 end
 
@@ -501,96 +597,194 @@ global h_i_im;
 i_im = getappdata(hfig,'i_im');
 numFiles = getappdata(hfig,'numFiles');
 if i_im < numFiles
-    LoadImage(hfig,i_im+1);
-    setappdata(hfig,'i_im',i_im+1);
+    i_im = i_im+1;
+    LoadImage(hfig,i_im);
     
     % update GUI
-    h_i_im.String = num2str(i_im+1);
+    h_i_im.String = num2str(i_im);
 else
-    disp('reached last image');
+    msgbox('reached last image');
 end
 end
 
-function LoadMask(hfig,masktypeID)
+function masktypeID = ToggleSelectedMask(hfig)
+M = getappdata(hfig,'M');
+hpoly = getappdata(hfig,'hpoly');
+
+% save current pos of old mask
+masktypeID_old = getappdata(hfig,'masktypeID');
+M(masktypeID_old).pos = getPosition(hpoly(masktypeID_old));
+delete(hpoly(masktypeID_old));
+
+% toggle masktypeID
+if masktypeID_old==1
+    masktypeID = 2;    
+elseif masktypeID_old==2
+    masktypeID = 1;
+end
 setappdata(hfig,'masktypeID',masktypeID);
+% redundant?
+M(1).isselected = 0;
+M(2).isselected = 0;
+M(masktypeID).isselected = 1;
 
-% get plotting axes
-h_ax = getappdata(hfig,'h_ax');
-axes(h_ax);
-
-% make mask
-if masktypeID==1
-    pos_init = getappdata(hfig,'pos_slot_init');
-elseif masktypeID==2
-    pos_init = getappdata(hfig,'pos_sample_init');
-end
-hpoly = impoly(h_ax, pos_init);
+% draw new mask
+hpoly(masktypeID) = impoly(gca, M(masktypeID).pos);
+setColor(hpoly(masktypeID),[1,0,0]);
 
 % save
-if masktypeID==1
-    setappdata(hfig,'hpoly_slot',hpoly);
-elseif masktypeID==2
-    setappdata(hfig,'hpoly_sample',hpoly);
-end
+setappdata(hfig,'M',M);
+setappdata(hfig,'hpoly',hpoly);
 end
 
 function RotateMask(hfig,rotationAngle,masktypeID)
+S = getappdata(hfig,'S');
+M = getappdata(hfig,'M');
+hpoly = getappdata(hfig,'hpoly');
 
-
-
-
+% record rotation angle for this section
 if masktypeID == 1
-    % record rotation angle
-    angle_slot = getappdata(hfig,'angle_slot');
-    setappdata(hfig,'angle_slot',angle_slot+rotationAngle);
-    
-    hpoly = getappdata(hfig,'hpoly_slot');
+    S.slot.rotation = S.slot.rotation + rotationAngle;
 elseif masktypeID == 2
-    % record rotation angle
-    angle_sample = getappdata(hfig,'angle_sample');
-    setappdata(hfig,'angle_sample',angle_sample+rotationAngle);
-
-    hpoly = getappdata(hfig,'hpoly_sample');
+    S.section.rotation = S.section.rotation + rotationAngle;
 end
 
-pos = getPosition(hpoly);
+pos = getPosition(hpoly(masktypeID));
 center = GetCenterPos(pos);
 poscenter = repmat(center,size(pos,1),1);
 rotationArray = [cos(rotationAngle), -sin(rotationAngle); sin(rotationAngle), cos(rotationAngle)];
 pos2 = (pos-poscenter) * rotationArray + poscenter;
-%     hpoly_sample = impoly(h_ax, pos2);
-setConstrainedPosition(hpoly,pos2)
-if masktypeID == 1
-    setappdata(hfig,'pos_slot',pos2);
-elseif masktypeID == 2
-    setappdata(hfig,'pos_sample',pos2);
-end
+%     hpoly_section = impoly(h_ax, pos2);
+setConstrainedPosition(hpoly(masktypeID),pos2);
+M(masktypeID).pos = pos2;
+
+% save
+setappdata(hfig,'S',S);
+setappdata(hfig,'M',M);
+setappdata(hfig,'hpoly',hpoly);
 end
 
 function TranslateMask(hfig,translationArray,masktypeID)
-if masktypeID == 1
-    hpoly = getappdata(hfig,'hpoly_mask');
-elseif masktypeID == 2
-    hpoly = getappdata(hfig,'hpoly_sample');
-end
+S = getappdata(hfig,'S');
+M = getappdata(hfig,'M');
+hpoly = getappdata(hfig,'hpoly');
 
-pos = getPosition(hpoly);
+% % record translation for this section
+% if masktypeID == 1
+%     S.slot.translation = S.slot.translation + translationArray;
+% elseif masktypeID == 2
+%     S.section.translation = S.section.translation + translationArray;
+% end
+
+pos = getPosition(hpoly(masktypeID));
 pos2 = pos;
 pos2(:,1) = pos2(:,1)+translationArray(1);
 pos2(:,2) = pos2(:,2)+translationArray(2);
+setConstrainedPosition(hpoly(masktypeID),pos2);
+M(masktypeID).pos = pos2;
 
-setConstrainedPosition(hpoly,pos2)
-if masktypeID == 1
-    setappdata(hfig,'pos_slot',pos2);
-elseif masktypeID == 2
-    setappdata(hfig,'pos_sample',pos2);
-end
+% save
+setappdata(hfig,'S',S);
+setappdata(hfig,'M',M);
+setappdata(hfig,'hpoly',hpoly);
 end
 
 function center = GetCenterPos(pos)
 center = zeros(1,2);
-center(1) = (max(pos(:,1))-min(pos(:,1)))/2+min(pos(:,1));
-center(2) = (max(pos(:,2))-min(pos(:,2)))/2+min(pos(:,2));
+center(1) = mean(pos(:,1));%(max(pos(:,1))-min(pos(:,1)))/2+min(pos(:,1));
+center(2) = mean(pos(:,2));%(max(pos(:,2))-min(pos(:,2)))/2+min(pos(:,2));
+end
+
+function DrawNewMask(hfig)
+M = getappdata(hfig,'M');
+% hpoly = getappdata(hfig,'hpoly');
+
+% % reset to slot
+% masktypeID = 1;
+% setappdata(hfig,'masktypeID',masktypeID);
+% 
+% % draw
+% hpoly(masktypeID) = impoly(gca, M(masktypeID).pos);
+% M(masktypeID).isselected = 1;
+% setColor(hpoly(masktypeID),[1,0,0]);
+
+masktypeID = 2;
+setappdata(hfig,'masktypeID',masktypeID);
+
+% draw
+hpoly(1) = impoly(gca, M(1).pos);
+delete(hpoly(1));
+hpoly(masktypeID) = impoly(gca, M(masktypeID).pos);
+M(masktypeID).isselected = 1;
+setColor(hpoly(masktypeID),[1,0,0]);
+
+% masktypeID = 2;
+% 
+% hpoly(masktypeID) = impoly(gca, M(masktypeID).pos);
+% M(masktypeID).isselected = 0;
+% setColor(hpoly(masktypeID),[0.7,0.7,0.7]);
+
+setappdata(hfig,'hpoly',hpoly);
+end
+
+function [pos_slot,pos_section] = ReconstitutePos(S,M)
+% slot
+masktypeID = 1;
+% rotate
+rotationAngle = S.slot.rotation;
+pos = M(masktypeID).pos_init;
+center = GetCenterPos(pos);
+poscenter = repmat(center,size(pos,1),1);
+rotationArray = [cos(rotationAngle), -sin(rotationAngle); sin(rotationAngle), cos(rotationAngle)];
+pos_slot = (pos-poscenter) * rotationArray + poscenter;
+%     translate1 = pos2(1,:)-pos(1,:);
+
+% translate
+translationArray = S.slot.translation;% - translate1;
+pos_slot(:,1) = pos_slot(:,1)+translationArray(1);
+pos_slot(:,2) = pos_slot(:,2)+translationArray(2);
+
+% section
+masktypeID = 2;
+% rotate
+rotationAngle = S.section.rotation;
+pos = M(masktypeID).pos_init;
+center = GetCenterPos(pos);
+poscenter = repmat(center,size(pos,1),1);
+rotationArray = [cos(rotationAngle), -sin(rotationAngle); sin(rotationAngle), cos(rotationAngle)];
+pos_section = (pos-poscenter) * rotationArray + poscenter;
+%     translate1 = pos2(1,:)-pos(1,:);
+
+% translate
+translationArray = S.section.translation;% - translate1;
+pos_section(:,1) = pos_section(:,1)+translationArray(1);
+pos_section(:,2) = pos_section(:,2)+translationArray(2);
+
+end
+
+function LoadNewMask(hfig,slot_mask_file,section_mask_file)
+S = getappdata(hfig,'S');
+
+pos_slot_init = dlmread(slot_mask_file,' ',1,0);
+pos_section_init = dlmread(section_mask_file,' ',1,0);
+
+% init mask struct
+M = [];
+
+masktypeID = 1;
+M(masktypeID).pos_init = pos_slot_init;
+
+masktypeID = 2;
+M(masktypeID).pos_init = pos_section_init;
+
+[pos_slot,pos_section] = ReconstitutePos(S,M); 
+% NB: this reconstitution is not correct for newly created masks, 
+% but approximately right assuming that the new mask is similar to 
+% the old one (e.g. minor shape adjustment).
+M(1).pos = pos_slot;
+M(2).pos = pos_section;
+
+setappdata(hfig,'M',M);
 end
 
 function fig = getParentFigure(fig)
