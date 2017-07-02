@@ -20,7 +20,7 @@ h_ax = axes('Position',ax_pos);
 masterPath = 'C:\Users\akuan\Dropbox (HMS)\htem_team\projects\PPC_project\stainingImages';
 
 % saved mask templates for slot and section, respectively, in txt
-slot_mask_file = [masterPath '\masks\' '170404_slot_mask.txt'];
+slot_mask_file = [masterPath '\masks\' '170630_slot_mask.txt'];
 section_mask_file = [masterPath '\masks\' '170404_section_mask2.txt'];
 setappdata(hfig,'slot_mask_file',slot_mask_file);
 setappdata(hfig,'section_mask_file',section_mask_file);
@@ -305,7 +305,7 @@ setappdata(hfig,'slot_mask_file',f);
 
 % (write to txt)
 fileID = fopen(f,'wt');
-fprintf(fileID,'row: vertices; col: x & y coordinate');
+fprintf(fileID,'%s\n','row: vertices; col: x & y coordinate');
 for i = 1:size(pos,1)
     formatSpec = '%4.2f %4.2f\n';
     fprintf(fileID,formatSpec,pos(i,1),pos(i,2));
