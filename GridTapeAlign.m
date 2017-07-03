@@ -20,8 +20,8 @@ h_ax = axes('Position',ax_pos);
 masterPath = 'C:\Users\akuan\Dropbox (HMS)\htem_team\projects\PPC_project\stainingImages';
 
 % saved mask templates for slot and section, respectively, in txt
-slot_mask_file = [masterPath '\masks\' '170630_slot_mask.txt'];
-section_mask_file = [masterPath '\masks\' '170404_section_mask2.txt'];
+slot_mask_file = [masterPath '\masks\' '170703_slot_mask.txt'];
+section_mask_file = [masterPath '\masks\' '170703_section_mask.txt'];
 setappdata(hfig,'slot_mask_file',slot_mask_file);
 setappdata(hfig,'section_mask_file',section_mask_file);
 
@@ -511,7 +511,7 @@ S.section.translation = GetCenterPos(M(2).pos) - GetCenterPos(M(2).pos_init);
 setappdata(hfig,'S',S);
 
 % write to text file
-WriteToText_GTA(secID,S,outputPath);
+WriteToText_GTA(secID,S,M,outputPath);
 end
 
 function LoadImage(hfig,i_im)

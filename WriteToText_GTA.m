@@ -1,4 +1,4 @@
-function WriteToText_GTA(secID,S,outputPath)
+function WriteToText_GTA(secID,S,M,outputPath)
 % S.slot.translation = [0,0];
 % S.slot.rotation = 0;
 % S.section.translation = [0,0];
@@ -11,27 +11,43 @@ f = fullfile(outputPath,[num2str(secID),'.txt']);
 % f = fullfile(outputPath,[num2str(secID,'%04d'),'.txt']);
 fileID = fopen(f,'wt');
 
+fprintf(fileID,'FLAGS\n');
+fprintf(fileID,'is_problematic,is_verified\n');
+fprintf(fileID,'%d %d\n',S.is_problematic,S.is_verified);
+% fprintf(fileID,'is_verified = %d\n',S.is_verified);
+fprintf(fileID,'SGALF\n');
+fprintf(fileID,'\n');
+
 % write data
-fprintf(fileID,'row 1: slot (x,y,theta)\n');
-fprintf(fileID,'row 2: section (x,y,theta)\n');
-fprintf(fileID,'row 3: is_problematic,is_verified\n');
+fprintf(fileID,'SLOT\n');
+%fprintf(fileID,'(x,y,theta):');
+%formatSpec = '%4.2f %4.2f %4.2f\n';
+%fprintf(fileID,formatSpec,S.slot.translation(1),S.slot.translation(2),S.slot.rotation);
+for i = 1:size(M(1).pos,1)
+    formatSpec = '%4.2f %4.2f\n';
+    fprintf(fileID,formatSpec,M(1).pos(i,1),M(1).pos(i,2));
+end
+fprintf(fileID,'TLOS\n');
+fprintf(fileID,'\n');
+
+fprintf(fileID,'SECTION\n');
+%fprintf(fileID,'block 3: section (x,y,theta):');
+% fprintf(fileID,'section mask\n');
+%formatSpec = '%4.2f %4.2f %4.2f\n';
+% formatSpec = '[section] x: %4.2f; y: %4.2f; theta: %4.2f \n';
+%fprintf(fileID,formatSpec,S.section.translation(1),S.section.translation(2),S.section.rotation);
+for i = 1:size(M(2).pos,1)
+    formatSpec = '%4.2f %4.2f\n';
+    fprintf(fileID,formatSpec,M(2).pos(i,1),M(2).pos(i,2));
+end
+fprintf(fileID,'NOITCES\n');
+fprintf(fileID,'\n');
+
 [~,name,ext] = fileparts(S.slot_mask_file);
 fprintf(fileID,['slot mask file: ',name,ext,'\n']);
 [~,name,ext] = fileparts(S.section_mask_file);
 fprintf(fileID,['section mask file: ',name,ext,'\n']);
-
-formatSpec = '%4.2f %4.2f %4.2f\n';
-fprintf(fileID,formatSpec,S.slot.translation(1),S.slot.translation(2),S.slot.rotation);
-
-% fprintf(fileID,'section mask\n');
-formatSpec = '%4.2f %4.2f %4.2f\n';
-% formatSpec = '[section] x: %4.2f; y: %4.2f; theta: %4.2f \n';
-fprintf(fileID,formatSpec,S.section.translation(1),S.section.translation(2),S.section.rotation);
-
-fprintf(fileID,'%d %d\n',S.is_problematic,S.is_verified);
-% fprintf(fileID,'is_verified = %d\n',S.is_verified);
-
-
+fprintf(fileID,'\n');
 % close file
 fclose(fileID);
 
