@@ -20,27 +20,32 @@ fprintf(fileID,'\n');
 
 % write data
 fprintf(fileID,'SLOT\n');
-%fprintf(fileID,'(x,y,theta):');
-%formatSpec = '%4.2f %4.2f %4.2f\n';
-%fprintf(fileID,formatSpec,S.slot.translation(1),S.slot.translation(2),S.slot.rotation);
+
 for i = 1:size(M(1).pos,1)
     formatSpec = '%4.2f %4.2f\n';
     fprintf(fileID,formatSpec,M(1).pos(i,1),M(1).pos(i,2));
 end
-fprintf(fileID,'TLOS\n');
+fprintf(fileID,'TOLS\n');
+fprintf(fileID,'\n');
+
+fprintf(fileID,'SLOTCOM(x,y,theta):\n');
+formatSpec = '%4.2f %4.2f %4.2f\n';
+fprintf(fileID,formatSpec,S.slot.translation(1),S.slot.translation(2),S.slot.rotation);
 fprintf(fileID,'\n');
 
 fprintf(fileID,'SECTION\n');
-%fprintf(fileID,'block 3: section (x,y,theta):');
-% fprintf(fileID,'section mask\n');
-%formatSpec = '%4.2f %4.2f %4.2f\n';
-% formatSpec = '[section] x: %4.2f; y: %4.2f; theta: %4.2f \n';
-%fprintf(fileID,formatSpec,S.section.translation(1),S.section.translation(2),S.section.rotation);
 for i = 1:size(M(2).pos,1)
     formatSpec = '%4.2f %4.2f\n';
     fprintf(fileID,formatSpec,M(2).pos(i,1),M(2).pos(i,2));
 end
 fprintf(fileID,'NOITCES\n');
+fprintf(fileID,'\n');
+
+fprintf(fileID,'SECTIONCOM(x,y,theta):\n');
+% fprintf(fileID,'section mask\n');
+formatSpec = '%4.2f %4.2f %4.2f\n';
+%formatSpec = '[section] x: %4.2f; y: %4.2f; theta: %4.2f \n';
+fprintf(fileID,formatSpec,S.section.translation(1),S.section.translation(2),S.section.rotation);
 fprintf(fileID,'\n');
 
 [~,name,ext] = fileparts(S.slot_mask_file);
