@@ -1,19 +1,19 @@
 
 %% ATK 170703
 
-startSectionID = 428;
-endSectionID = 432;
+startSectionID = 424;
+endSectionID = 428;
 
 %% Set paths and load mask and image
 % master path
 masterPath = 'C:\Users\akuan\Dropbox (HMS)\htem_team\projects\PPC_project\stainingImages';
 
-queue_output = [masterPath '\queues\' 'temcaGTjob_center.json'];
+queue_output = [masterPath '\queues\' '170705_temcaGTjob_center_424_428.json'];
 
 
 % saved mask templates for slot and section, respectively, in txt
-slot_mask_file = [masterPath '\masks\' '170703_slot_mask.txt'];
-section_mask_file = [masterPath '\masks\' '170703_section_mask.txt'];
+slot_mask_file = [masterPath '\masks\' 'slot_mask_sect0010_170705.txt'];
+section_mask_file = [masterPath '\masks\' 'section_mask_sec0010_170705.txt'];
 setappdata(hfig,'slot_mask_file',slot_mask_file);
 setappdata(hfig,'section_mask_file',section_mask_file);
 
@@ -33,15 +33,17 @@ fileID = fopen(queue_output,'wt');
 fprintf(fileID,'{');
 %% Parse annotation text files
 
-for sectionIdx = startSectionID:endSectionID
-%sectionIdx = 431;
-f = fullfile(outputPath,[num2str(sectionIdx),'.txt']);
+for secID = startSectionID:endSectionID
+%secID = 431;
+
+[S(secID),tf(secID)] = ScanText_GTA(secID,outputPath,slot_mask_file,section_mask_file);
+f = fullfile(outputPath,[num2str(secID),'.txt']);
 
 fid = fopen(f, 'rt');
 s = textscan(fid, '%s', 'delimiter', '\n');
 
 idx1 = find(strcmp(s{1}, 'SLOT'), 1, 'first');
-idx2 = find(strcmp(s{1}, 'TLOS'), 1, 'first');
+idx2 = find(strcmp(s{1}, 'TOLS'), 1, 'first');
 slot = dlmread(f,'',[idx1 0 idx2-2 1]);
 
 idx3 = find(strcmp(s{1}, 'SECTION'), 1, 'first');
@@ -61,7 +63,9 @@ yB = (slot(7,2)+slot(8,2))/2;
 
 slot_center = [(xR+xL)/2 (yB+yT)/2];
 slot_size = [(xR-xL) (yB-yT)];
-pxl_scale = [slot_size(1)/2 slot_size(2)/1.5]; % pixels per mm
+pxl_size = 5.3; %um, point grey camera
+pxl_scale = 1000/pxl_size;
+%pxl_scale = [slot_size(1)/2 slot_size(2)/1.5]; % pixels per mm
 
 
 %% Locate top-right corner for ROI (TEM reference)
@@ -69,10 +73,14 @@ pxl_scale = [slot_size(1)/2 slot_size(2)/1.5]; % pixels per mm
 % 170703_section_mask
 
 roi_TR_pxl = section(1,:)-slot_center;
-roi_TR_mm = roi_TR_pxl./pxl_scale;
+roi_TR_mm = roi_TR_pxl/pxl_scale;
 roi_TR_mm = -roi_TR_mm; % rotate 180 deg to match TEMCA-GT orientation
 
+% add constant offset to account for slot-finding routine offset
+fudge_factor = [ mean([.8921-.8515 .9581-.9422]) mean([-.4332+.5335 -.4062+.4968])];
+roi_TR_mm = roi_TR_mm + fudge_factor;
 
+disp(['Sect ' num2str(secID) ': ' num2str(roi_TR_mm)]);
 
 %% Write json
 
@@ -87,9 +95,9 @@ end
 %}
 
 
-fprintf(fileID,['"' num2str(sectionIdx) '": {"rois": [{"width": 100000, "center": [' ...
+fprintf(fileID,['"' num2str(secID) '": {"rois": [{"width": 100000, "center": [' ...
     sprintf('%0.0f',1e6*roi_TR_mm(1)) ', ' sprintf('%0.0f',1e6*roi_TR_mm(2)) '], "height": 100000}]}']);
-if sectionIdx == endSectionID   
+if secID == endSectionID   
     fprintf(fileID,'}');
 else
     fprintf(fileID,', ');

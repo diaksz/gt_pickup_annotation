@@ -1,7 +1,7 @@
 function hfig = GridTapeAlign
 %% Make figure
 scrn = get(0,'Screensize');
-hfig = figure('Position',[scrn(3)*0.2 scrn(4)*0.05 scrn(3)*0.6 scrn(4)*0.86],...% [50 100 1700 900]
+hfig = figure('Position',[scrn(3)*0 scrn(4)*0 scrn(3)*1 scrn(4)*1],...% [50 100 1700 900]
     'Name','GridTapeAlign','DeleteFcn',@closefigure_Callback,...
     'KeyPressFcn',@KeyPressCallback,...
     'WindowButtonDownFcn',@WindowButtonDownCallback,...
@@ -13,6 +13,7 @@ ax_pos = [0.1, 0.1, 0.8, 0.7];
 % setappdata(hfig,'ax_pos',ax_pos);
 figure(hfig);
 h_ax = axes('Position',ax_pos);
+axis image
 % axes(h_ax);
 
 %% Set paths and load mask and image
@@ -20,8 +21,8 @@ h_ax = axes('Position',ax_pos);
 masterPath = 'C:\Users\akuan\Dropbox (HMS)\htem_team\projects\PPC_project\stainingImages';
 
 % saved mask templates for slot and section, respectively, in txt
-slot_mask_file = [masterPath '\masks\' '170703_slot_mask.txt'];
-section_mask_file = [masterPath '\masks\' '170703_section_mask.txt'];
+slot_mask_file = [masterPath '\masks\' 'slot_mask_sect0010_170705.txt'];
+section_mask_file = [masterPath '\masks\' 'section_mask_sec0010_170705.txt'];
 setappdata(hfig,'slot_mask_file',slot_mask_file);
 setappdata(hfig,'section_mask_file',section_mask_file);
 
@@ -574,7 +575,16 @@ end
 % h_ax = axes('Position',ax_pos);
 % h_ax = getappdata(hfig,'h_ax');
 axes(gca);
-imagesc(im_raw);
+
+% Preprocess image to make easier to see edges
+left_crop = 250;
+right_crop = 1280;
+top_crop = 250;
+bottom_crop = 750;
+channel = 3; % blue channel seems to be the most informative
+num_levels = 20; % number of levels for histogram equalization
+imshow(histeq(im_raw(top_crop:bottom_crop,left_crop:right_crop,3),20),jet(255));
+%imagesc(im_raw);
 axis equal; axis off
 % setappdata(hfig,'im_raw',im_raw);
 % setappdata(hfig,'h_ax',h_ax);
@@ -779,7 +789,9 @@ M(masktypeID).pos_init = pos_slot_init;
 masktypeID = 2;
 M(masktypeID).pos_init = pos_section_init;
 
-[pos_slot,pos_section] = ReconstitutePos(S,M); 
+pos_slot = S.slot.vertices;
+pos_section = S.section.vertices;
+%[pos_slot,pos_section] = ReconstitutePos(S,M); 
 % NB: this reconstitution is not correct for newly created masks, 
 % but approximately right assuming that the new mask is similar to 
 % the old one (e.g. minor shape adjustment).
