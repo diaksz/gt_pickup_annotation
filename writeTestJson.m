@@ -8,7 +8,7 @@ endSectionID = 434;
 % master path
 masterPath = 'C:\Users\akuan\Dropbox (HMS)\htem_team\projects\PPC_project\stainingImages';
 
-queue_output = [masterPath '\queues\' '170705_temcaGTjob_433_434.json'];
+queue_output = [masterPath '\queues\' '170705_temcaGTjob_433_434.json.edit'];
 
 
 % saved mask templates for slot and section, respectively, in txt
@@ -86,10 +86,13 @@ disp(['Sect ' num2str(secID) ': ' num2str(roi_TR_mm)]);
 
 %% Write json
 
-width = 1500000+90000;
-height = 750000+90000;
+% units are nm
+offset = 45000;
+width = 1500000+2*offset;
+height = 750000+2*offset;
 fprintf(fileID,['"' num2str(secID) '": {"rois": [{"width": ' num2str(width) ', "right": ' ...
-    sprintf('%0.0f',1e6*roi_TR_mm(1)) ', "top": ' sprintf('%0.0f',1e6*roi_TR_mm(2)) ', "height": ' num2str(height) '}]}']);
+    sprintf('%0.0f',1e6*roi_TR_mm(1)+offset) ', "top": ' sprintf('%0.0f',1e6*roi_TR_mm(2)-offset)...
+    ', "height": ' num2str(height) '}]}']);
 if secID == endSectionID   
     fprintf(fileID,'}');
 else
