@@ -1,14 +1,14 @@
 
 %% ATK 170703
 
-startSectionID = 424;
-endSectionID = 428;
+startSectionID = 433;
+endSectionID = 434;
 
 %% Set paths and load mask and image
 % master path
 masterPath = 'C:\Users\akuan\Dropbox (HMS)\htem_team\projects\PPC_project\stainingImages';
 
-queue_output = [masterPath '\queues\' '170705_temcaGTjob_center_424_428.json'];
+queue_output = [masterPath '\queues\' '170705_temcaGTjob_433_434.json'];
 
 
 % saved mask templates for slot and section, respectively, in txt
@@ -77,24 +77,27 @@ roi_TR_mm = roi_TR_pxl/pxl_scale;
 roi_TR_mm = -roi_TR_mm; % rotate 180 deg to match TEMCA-GT orientation
 
 % add constant offset to account for slot-finding routine offset
-fudge_factor = [ mean([.8921-.8515 .9581-.9422]) mean([-.4332+.5335 -.4062+.4968])];
+% fudge_factor = [ mean([.8921-.8515 .9581-.9422]) mean([-.4332+.5335 -.4062+.4968])];
+% This is from manual checking of sec 431 and 432
+fudge_factor = [0.0282    0.0955];
 roi_TR_mm = roi_TR_mm + fudge_factor;
 
 disp(['Sect ' num2str(secID) ': ' num2str(roi_TR_mm)]);
 
 %% Write json
 
-%{
-fprintf(fileID,['"' num2str(sectionIdx) '": {"rois": [{"width": 100000, "right": ' ...
-    sprintf('%0.0f',1e6*roi_TR_mm(1)) ', "top": ' sprintf('%0.0f',1e6*roi_TR_mm(2)) ', "height": 100000}]}']);
-if sectionIdx == endSectionID   
+width = 1500000+90000;
+height = 750000+90000;
+fprintf(fileID,['"' num2str(secID) '": {"rois": [{"width": ' num2str(width) ', "right": ' ...
+    sprintf('%0.0f',1e6*roi_TR_mm(1)) ', "top": ' sprintf('%0.0f',1e6*roi_TR_mm(2)) ', "height": ' num2str(height) '}]}']);
+if secID == endSectionID   
     fprintf(fileID,'}');
 else
     fprintf(fileID,', ');
 end
-%}
 
 
+%{
 fprintf(fileID,['"' num2str(secID) '": {"rois": [{"width": 100000, "center": [' ...
     sprintf('%0.0f',1e6*roi_TR_mm(1)) ', ' sprintf('%0.0f',1e6*roi_TR_mm(2)) '], "height": 100000}]}']);
 if secID == endSectionID   
@@ -102,7 +105,7 @@ if secID == endSectionID
 else
     fprintf(fileID,', ');
 end
-
+%}
 
 end
 fclose(fileID);
