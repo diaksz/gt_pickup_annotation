@@ -13,7 +13,9 @@ M(masktypeID).pos_init = pos_slot_init;
 masktypeID = 2;
 M(masktypeID).pos_init = pos_section_init;
 
-[pos_slot,pos_section] = ReconstitutePos(S,M); 
+pos_slot = S.slot.vertices;
+pos_section = S.section.vertices;
+%[pos_slot,pos_section] = ReconstitutePos(S,M); 
 % NB: this reconstitution is not correct for newly created masks, 
 % but approximately right assuming that the new mask is similar to 
 % the old one (e.g. minor shape adjustment).

@@ -1,14 +1,16 @@
 
 %% ATK 170703
 
-startSectionID = 433;
-endSectionID = 434;
+startSectionID = 436;
+endSectionID = 440;
+write = 0;
+
 
 %% Set paths and load mask and image
 % master path
 masterPath = 'C:\Users\akuan\Dropbox (HMS)\htem_team\projects\PPC_project\stainingImages';
 
-queue_output = [masterPath '\queues\' '170705_temcaGTjob_433_434.json.edit'];
+queue_output = [masterPath '\queues\' '170706_temcaGTjob_436_440.json'];
 
 
 % saved mask templates for slot and section, respectively, in txt
@@ -72,6 +74,8 @@ pxl_scale = 1000/pxl_size;
 % assume convention of this being the first point
 % 170703_section_mask
 
+disp(['Sect ' num2str(secID) ': ']);
+
 roi_TR_pxl = section(1,:)-slot_center;
 roi_TR_mm = roi_TR_pxl/pxl_scale;
 roi_TR_mm = -roi_TR_mm; % rotate 180 deg to match TEMCA-GT orientation
@@ -82,33 +86,61 @@ roi_TR_mm = -roi_TR_mm; % rotate 180 deg to match TEMCA-GT orientation
 fudge_factor = [0.0282    0.0955];
 roi_TR_mm = roi_TR_mm + fudge_factor;
 
-disp(['Sect ' num2str(secID) ': ' num2str(roi_TR_mm)]);
+% check if corner is too close to slot (only checks bottom left (top right) for now)
+slot_padding = 0; % closest we allow the corner to be to slot
+% for now, treat the slot as 2x1.5, padding comes for free
+
+% check x 
+if roi_TR_mm(1) > 1-slot_padding
+    roi_TR_mm(1) = 1-slot_padding;
+    disp('Corner off slot right, adjusting ROI');
+end
+
+% check y
+if roi_TR_mm(2) < -.75+slot_padding;
+    roi_TR_mm(2) = -.75+slot_padding;
+    disp('Corner off slot up, adjusting ROI');
+end
+
+% check rounded corner
+curve_center = [.5 -.25];
+offsetTR = [roi_TR_mm(1)-curve_center(1) roi_TR_mm(2)-curve_center(2)];
+
+if offsetTR(1) > 0 && offsetTR(2) < 0 && norm(offsetTR) > 0.5 - slot_padding
+    roi_TR_mm = curve_center + (0.5-slot_padding)/norm(offsetTR)*offsetTR;
+    disp('Corner off slot top right, adjusting ROI');
+end
+   
+    
+
+disp(['Top Right Corner: ' num2str(roi_TR_mm)]);
 
 %% Write json
-
-% units are nm
-offset = 45000;
-width = 1500000+2*offset;
-height = 750000+2*offset;
-fprintf(fileID,['"' num2str(secID) '": {"rois": [{"width": ' num2str(width) ', "right": ' ...
-    sprintf('%0.0f',1e6*roi_TR_mm(1)+offset) ', "top": ' sprintf('%0.0f',1e6*roi_TR_mm(2)-offset)...
-    ', "height": ' num2str(height) '}]}']);
-if secID == endSectionID   
-    fprintf(fileID,'}');
-else
-    fprintf(fileID,', ');
-end
-
-
-%{
+if write == 1
+    % units are nm
+    offset = 40000;
+    width = 1500000+2*offset;
+    height = 750000+2*offset;
+    fprintf(fileID,['"' num2str(secID) '": {"rois": [{"width": ' num2str(width) ', "right": ' ...
+        sprintf('%0.0f',1e6*roi_TR_mm(1)+offset) ', "top": ' sprintf('%0.0f',1e6*roi_TR_mm(2)-offset)...
+        ', "height": ' num2str(height) '}]}']);
+    if secID == endSectionID
+        fprintf(fileID,'}');
+    else
+        fprintf(fileID,', ');
+    end
+    
+    
+    %{
 fprintf(fileID,['"' num2str(secID) '": {"rois": [{"width": 100000, "center": [' ...
     sprintf('%0.0f',1e6*roi_TR_mm(1)) ', ' sprintf('%0.0f',1e6*roi_TR_mm(2)) '], "height": 100000}]}']);
-if secID == endSectionID   
+if secID == endSectionID
     fprintf(fileID,'}');
 else
     fprintf(fileID,', ');
 end
-%}
-
+    %}
+    
 end
 fclose(fileID);
+end
