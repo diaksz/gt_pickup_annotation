@@ -139,7 +139,7 @@ for i_count = 1:length(range_im);
     imagesc(A1); axis equal; axis off; hold on;
     
     % plot section
-    %hp = impoly(gca,pos_slot);
+    hp = impoly(gca,pos_slot);
     %slotmask = createMask(hp);
     %figure;imagesc(slotmask);
     
