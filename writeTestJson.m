@@ -8,7 +8,13 @@ write_json = 1;
 
 %% Set paths and load mask and image
 % master path
-masterPath = 'C:\Users\akuan\Dropbox (HMS)\htem_team\projects\PPC_project\stainingImages';
+if ispc
+    masterPath = 'C:/Users/akuan/Dropbox (HMS)/htem_team/projects/PPC_project/stainingImages';
+elseif isunix
+    masterPath = '~/Dropbox (HMS)/htem_team/projects/PPC_project/stainingImages';
+else
+    disp('OS error - not Win or Unix');
+end
 queue_output = [masterPath '\queues\' '170722_temcaGTjob_597_660.json'];
 
 
