@@ -18,23 +18,23 @@ axis image
 
 %% Set paths and load mask and image
 % master path
-masterPath = 'C:\Users\akuan\Dropbox (HMS)\htem_team\projects\PPC_project\stainingImages';
+masterPath = 'C:/Users/akuan/Dropbox (HMS)/htem_team/projects/PPC_project/stainingImages';
 
 % saved mask templates for slot and section, respectively, in txt
-slot_mask_file = [masterPath '\masks\' 'slot_mask_sect0010_170705.txt'];
-section_mask_file = [masterPath '\masks\' 'section_mask_sec0010_170705.txt'];
+slot_mask_file = [masterPath '/masks/' 'slot_mask_sect0010_170705.txt'];
+section_mask_file = [masterPath '/masks/' 'section_mask_sec0010_170705.txt'];
 setappdata(hfig,'slot_mask_file',slot_mask_file);
 setappdata(hfig,'section_mask_file',section_mask_file);
 
 % output of annotation, in txt
-outputPath = [masterPath '\annotations']; % saves annotated relative positions to txt, for each individual section
+outputPath = [masterPath '/annotations']; % saves annotated relative positions to txt, for each individual section
 if exist(outputPath,'dir')~=7
     mkdir(outputPath);
 end
 setappdata(hfig,'outputPath',outputPath);
 
 % image folder
-imPath = [masterPath '\ppc0_links']; % contains images of individual sections
+imPath = [masterPath '/ppc0_links']; % contains images of individual sections
 ParseImageDir(hfig,imPath);
 
 %% Init section
