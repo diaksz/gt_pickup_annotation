@@ -18,8 +18,14 @@ axis image
 
 %% Set paths and load mask and image
 % master path
-masterPath = 'C:/Users/akuan/Dropbox (HMS)/htem_team/projects/PPC_project/stainingImages';
-
+if ispc
+    masterPath = 'C:/Users/akuan/Dropbox (HMS)/htem_team/projects/PPC_project/stainingImages';
+elseif isunix
+    masterPath = '~/Dropbox (HMS)/htem_team/projects/PPC_project/stainingImages';
+else
+    disp('OS error - not Win or Unix');
+end
+        
 % saved mask templates for slot and section, respectively, in txt
 slot_mask_file = [masterPath '/masks/' 'slot_mask_sect0010_170705.txt'];
 section_mask_file = [masterPath '/masks/' 'section_mask_sec0010_170705.txt'];
