@@ -1,15 +1,15 @@
 
 %% ATK 170703
 
-startSectionID = 458;
-endSectionID = 485;
+startSectionID = 597;
+endSectionID = 660;
 write_json = 1;
 
 
 %% Set paths and load mask and image
 % master path
 masterPath = 'C:\Users\akuan\Dropbox (HMS)\htem_team\projects\PPC_project\stainingImages';
-queue_output = [masterPath '\queues\' '170711_temcaGTjob_458_485.json'];
+queue_output = [masterPath '\queues\' '170722_temcaGTjob_597_660.json'];
 
 
 % saved mask templates for slot and section, respectively, in txt
@@ -92,7 +92,7 @@ for secID = startSectionID:endSectionID
     disp(['Sect ' num2str(secID) ': ']);
     
     % units are nm
-    offset_nm = 40000;
+    offset_nm = 30000;
     width_nm = 1500000+2*offset_nm;
     height_nm = 750000+2*offset_nm;
 
@@ -135,7 +135,12 @@ for secID = startSectionID:endSectionID
     % add constant offset to account for slot-finding routine offset
     % fudge_factor = [ mean([.8921-.8515 .9581-.9422]) mean([-.4332+.5335 -.4062+.4968])];
     % This is from manual checking of sec 431 and 432
-    fudge_factor = [0.0282    0.0955]*1e6;
+    %fudge_factor = [0.0282    0.0955]*1e6;
+    
+    % AK 170719 updated fudgefactor based on coarse montages 520-532
+    % X: -56 um (3.5 blocks) Y: -8 um (0.5 blocks)
+    fudge_factor = [-0.0278    0.0875]*1e6;
+
     roi_TR_nm_fudged = roi_TR_nm + fudge_factor;
     right_edge_nm = roi_TR_nm_fudged(1)+offset_nm; 
     top_edge_nm = roi_TR_nm_fudged(2)-offset_nm;
