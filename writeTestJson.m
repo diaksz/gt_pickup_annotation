@@ -1,11 +1,13 @@
 
 %% ATK 170703
 
-startSectionID = 597;
-endSectionID = 660;
+startSectionID = 675;
+endSectionID = 856;
+skipList = [688,828];
 write_json = 1;
-
-
+plot_imgs = 1;
+sectionList = startSectionID:endSectionID;
+sectionList = setdiff(sectionList,skipList);
 %% Set paths and load mask and image
 % master path
 if ispc
@@ -15,7 +17,7 @@ elseif isunix
 else
     disp('OS error - not Win or Unix');
 end
-queue_output = [masterPath '\queues\' '170722_temcaGTjob_597_660.json'];
+queue_output = [masterPath '\queues\' '170727_temcaGTjob_675_856.json'];
 
 
 % saved mask templates for slot and section, respectively, in txt
@@ -41,7 +43,7 @@ if write_json == 1
     fprintf(fileID,'{');
 end
 %% Set up figure (for annotation images)
-    
+if plot_imgs == 1
     scrn = get(0,'Screensize');
     hfig1 = figure('Position',[scrn(3)*0 scrn(4)*0 scrn(3)*1 scrn(4)*1],...% [50 100 1700 900]
         'Name','writeTestJson','ToolBar', 'none'); % 'MenuBar', 'none'
@@ -53,14 +55,34 @@ end
     figure(hfig1);
     h_ax = axes('Position',ax_pos);
     axis image
-    
+end
 %% Parse annotation text files
-
-for secID = startSectionID:endSectionID
-    %secID = 431;
+% check for validation
+problematic = zeros(length(sectionList),1);
+verified = zeros(length(sectionList),1);
+for i = 1:length(sectionList)
+    f = fullfile(outputPath,[num2str(sectionList(i)),'.txt']);
+    fid = fopen(f, 'rt');
+    s = textscan(fid, '%s', 'delimiter', '\n');
     
-    [S(secID),tf(secID)] = ScanText_GTA(secID,outputPath,slot_mask_file,section_mask_file);
-    f = fullfile(outputPath,[num2str(secID),'.txt']);
+    idx5 = find(strcmp(s{1}, 'FLAGS'), 1, 'first');
+    flags = dlmread(f,'',[idx5+1 0 idx5+1 1]);
+    problematic(i) = flags(1);
+    verified(i) = flags(2);
+    fclose(fid);
+end
+problems = sectionList(find(problematic==1));
+unverified = sectionList(find(verified==0));
+
+disp(['Problem sections: ' num2str(problems)]);
+if ~isempty(unverified) > 0
+    error(['Unverified sections: ' num2str(unverified)]);
+end
+%%
+   
+for i = 1:length(sectionList)
+    [S(sectionList(i)),tf(sectionList(i))] = ScanText_GTA(sectionList(i),outputPath,slot_mask_file,section_mask_file);
+    f = fullfile(outputPath,[num2str(sectionList(i)),'.txt']);
     
     fid = fopen(f, 'rt');
     s = textscan(fid, '%s', 'delimiter', '\n');
@@ -73,7 +95,12 @@ for secID = startSectionID:endSectionID
     idx4 = find(strcmp(s{1}, 'NOITCES'), 1, 'first');
     section = dlmread(f,'',[idx3 0 idx4-2 1]);
     
+    idx5 = find(strcmp(s{1}, 'FLAGS'), 1, 'first');
+    flags = dlmread(f,'',[idx5+1 0 idx5+1 1]);
+    isproblematic = flags(1);
+    isverified = flags(2);
     
+    fclose(fid);
     %% Determine scale and center of slot
     % assume convention of 8 sided mask, starting from bottom left
     % 170703_slot_mask
@@ -95,12 +122,12 @@ for secID = startSectionID:endSectionID
     % assume convention of this being the first point
     % 170703_section_mask
     
-    disp(['Sect ' num2str(secID) ': ']);
+    disp(['Sect ' num2str(sectionList(i)) ': ']);
     
     % units are nm
     offset_nm = 30000;
     width_nm = 1500000+2*offset_nm;
-    height_nm = 750000+2*offset_nm;
+    height_nm = 650000+2*offset_nm;
 
     
     roi_TR_pxl = section(1,:)-slot_center_pxl;
@@ -160,22 +187,21 @@ for secID = startSectionID:endSectionID
     top_edge_nm = round(top_edge_nm);
     
     %% Write json entry
-    
-    
+
     if write_json == 1
-        fprintf(fileID,['"' num2str(secID) '": {"rois": [{"width": ' num2str(width_nm) ', "right": ' ...
+        fprintf(fileID,['"' num2str(sectionList(i)) '": {"rois": [{"width": ' num2str(width_nm) ', "right": ' ...
             sprintf('%0.0f',right_edge_nm) ', "top": ' sprintf('%0.0f',top_edge_nm)...
             ', "height": ' num2str(height_nm) '}]}']);
-        if secID == endSectionID
+        if sectionList(i) == endSectionID
             fprintf(fileID,'}');
         else
             fprintf(fileID,', ');
         end        
         
         %{
-fprintf(fileID,['"' num2str(secID) '": {"rois": [{"width": 100000, "center": [' ...
+fprintf(fileID,['"' num2str(sectionList(i)) '": {"rois": [{"width": 100000, "center": [' ...
     sprintf('%0.0f',1e6*roi_TR_nm_fudged(1)) ', ' sprintf('%0.0f',1e6*roi_TR_nm(2)_fudged) '], "height": 100000}]}']);
-if secID == endSectionID
+if sectionList(i) == endSectionID
     fprintf(fileID,'}');
 else
     fprintf(fileID,', ');
@@ -183,48 +209,51 @@ end
         %}       
     end
     %% Plot and save annotation image
-
-    im_raw = imread([imPath '\' num2str(secID) '.png']);
-    figure(hfig1);
-
-    % Preprocess image to make easier to see edges
-    left_crop = 250;
-    right_crop = 1280;
-    top_crop = 250;
-    bottom_crop = 750;
-    channel = 3; % blue channel seems to be the most informative
-    num_levels = 20; % number of levels for histogram equalization
-    A2 = histeq(im_raw(top_crop:bottom_crop,left_crop:right_crop,3),20);
-    A1 = A2;
-
-    imshow(A1,jet(225)); axis equal; axis off; hold on;
     
-    % plot slot center
-    plot(slot_center_pxl(:,1),slot_center_pxl(:,2),'mo','Linewidth',3);
-    
-    % plot section outline
-    section_outline = vertcat(section, section(1,:));
-    plot(section_outline(:,1),section_outline(:,2),'w-','Linewidth',2)
-    timestamp = datetime('now');
-    title(['sect ' num2str(secID) ' ' datestr(timestamp)]);
-    
-   
-    % plot ROI
-    % generate ROI for plotting in annot images
-    % move backwards from values sent to json file
-    corner_pxl = -([right_edge_nm top_edge_nm]-fudge_factor)*pxl_scale + slot_center_pxl;
-    
-    rect_ROI = vertcat(corner_pxl,corner_pxl+[0 -height_nm*pxl_scale],...
-        corner_pxl+[width_nm*pxl_scale -height_nm*pxl_scale],...
-        corner_pxl+[width_nm*pxl_scale 0], corner_pxl);
-    plot(rect_ROI(:,1),rect_ROI(:,2),'c-','Linewidth',3);
-    
-    
-    F = frame2im(getframe(hfig1));%im2frame(C); 
-    img_save_path = [masterPath '\annot_imgs\' num2str(secID) '.png'];
-    imwrite(F,img_save_path);
-    
+    if plot_imgs == 1
+        im_raw = imread([imPath '\' num2str(sectionList(i)) '.png']);
+        figure(hfig1);
+        
+        % Preprocess image to make easier to see edges
+        left_crop = 250;
+        right_crop = 1280;
+        top_crop = 250;
+        bottom_crop = 750;
+        channel = 3; % blue channel seems to be the most informative
+        num_levels = 20; % number of levels for histogram equalization
+        A2 = histeq(im_raw(top_crop:bottom_crop,left_crop:right_crop,3),20);
+        A1 = A2;
+        
+        imshow(A1,jet(225)); axis equal; axis off; hold on;
+        
+        % plot slot center
+        plot(slot_center_pxl(:,1),slot_center_pxl(:,2),'mo','Linewidth',3);
+        
+        % plot section outline
+        section_outline = vertcat(section, section(1,:));
+        plot(section_outline(:,1),section_outline(:,2),'w-','Linewidth',2)
+        timestamp = datetime('now');
+        title(['sect ' num2str(sectionList(i)) ' ' datestr(timestamp)]);
+        
+        
+        % plot ROI
+        % generate ROI for plotting in annot images
+        % move backwards from values sent to json file
+        corner_pxl = -([right_edge_nm top_edge_nm]-fudge_factor)*pxl_scale + slot_center_pxl;
+        
+        rect_ROI = vertcat(corner_pxl,corner_pxl+[0 -height_nm*pxl_scale],...
+            corner_pxl+[width_nm*pxl_scale -height_nm*pxl_scale],...
+            corner_pxl+[width_nm*pxl_scale 0], corner_pxl);
+        plot(rect_ROI(:,1),rect_ROI(:,2),'c-','Linewidth',3);
+        
+        
+        F = frame2im(getframe(hfig1));%im2frame(C);
+        img_save_path = [masterPath '\annot_imgs\' num2str(sectionList(i)) '.png'];
+        imwrite(F,img_save_path);
+    end
     
 end
 %% close json file
-fclose(fileID);
+if write_json == 1
+    fclose(fileID);
+end
