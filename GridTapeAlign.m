@@ -542,9 +542,23 @@ global h_probflag h_verflag
 % setup mask position from info saved in S
 if tf % (if annotation file exists)
     disp([num2str(i_im),': sectionID = ',num2str(secID)]);
-    M = getappdata(hfig,'M');
+    S = getappdata(hfig,'S');
 
-    [pos_slot,pos_section] = ReconstitutePos(S,M);
+    pos_slot_init = dlmread(slot_mask_file,' ',1,0);
+    pos_section_init = dlmread(section_mask_file,' ',1,0);
+    
+    % init mask struct
+    M = [];
+    
+    masktypeID = 1;
+    M(masktypeID).pos_init = pos_slot_init;
+    
+    masktypeID = 2;
+    M(masktypeID).pos_init = pos_section_init;
+    
+    pos_slot = S.slot.vertices;
+    pos_section = S.section.vertices;
+
     M(1).pos = pos_slot;
     M(2).pos = pos_section;
     
