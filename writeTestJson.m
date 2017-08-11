@@ -1,9 +1,9 @@
 
 %% ATK 170703
 
-startSectionID = 675;
-endSectionID = 856;
-skipList = [688,828];
+startSectionID = 1064;
+endSectionID = 1175;
+skipList = [944,975,1007,1012,1014,1049,1054,1094,1109,1171];
 write_json = 1;
 plot_imgs = 1;
 sectionList = startSectionID:endSectionID;
@@ -17,7 +17,7 @@ elseif isunix
 else
     disp('OS error - not Win or Unix');
 end
-queue_output = [masterPath '\queues\' '170727_temcaGTjob_675_856.json'];
+queue_output = [masterPath '\queues\' '170810_temcaGTjob_1064_1175.json'];
 
 
 % saved mask templates for slot and section, respectively, in txt
@@ -125,8 +125,8 @@ for i = 1:length(sectionList)
     disp(['Sect ' num2str(sectionList(i)) ': ']);
     
     % units are nm
-    offset_nm = 30000;
-    width_nm = 1500000+2*offset_nm;
+    offset_nm = 20000; %AK 170809 reduced to 20, based on stdev of 16 um
+    width_nm = 1100000+2*offset_nm;
     height_nm = 650000+2*offset_nm;
 
     
@@ -135,7 +135,8 @@ for i = 1:length(sectionList)
     roi_TR_nm = -roi_TR_nm; % rotate 180 deg to match TEMCA-GT orientation
     
     % check if corner is too close to slot (only checks bottom left (top right) for now)
-    slot_padding = 0.060*1e6; % closest we allow the corner to be to slot
+    slot_padding = 10000+offset_nm; % closest we allow the corner to be to slot
+    % AK adjusted slot_padding 170817
     % for now, treat the slot as 2x1.5, padding comes for free
     
     % check x
@@ -172,8 +173,14 @@ for i = 1:length(sectionList)
     
     % AK 170719 updated fudgefactor based on coarse montages 520-532
     % X: -56 um (3.5 blocks) Y: -8 um (0.5 blocks)
-    fudge_factor = [-0.0278    0.0875]*1e6;
+    %fudge_factor = [-0.0278    0.0875]*1e6;
 
+    % AK 170809 updated fudgefactor based on coarse montages
+    % 1000-1042
+    % X: +, most off montage (add back 30 um), Y: 56-30 = 26 um
+    % Y stdev = 16 um (1 block)
+    fudge_factor = [0.0022    0.1135]*1e6;
+    
     roi_TR_nm_fudged = roi_TR_nm + fudge_factor;
     right_edge_nm = roi_TR_nm_fudged(1)+offset_nm; 
     top_edge_nm = roi_TR_nm_fudged(2)-offset_nm;
