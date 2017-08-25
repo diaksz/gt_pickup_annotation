@@ -1,11 +1,11 @@
 
 %% ATK 170703
 
-startSectionID = 1064;
-endSectionID = 1175;
-skipList = [944,975,1007,1012,1014,1049,1054,1094,1109,1171];
+startSectionID = 1496;
+endSectionID = 1738;
+skipList = [1623,1679,1703,1704,1705,1706,1707,1729];
 write_json = 1;
-plot_imgs = 1;
+plot_imgs = 0;
 sectionList = startSectionID:endSectionID;
 sectionList = setdiff(sectionList,skipList);
 %% Set paths and load mask and image
@@ -17,7 +17,7 @@ elseif isunix
 else
     disp('OS error - not Win or Unix');
 end
-queue_output = [masterPath '\queues\' '170810_temcaGTjob_1064_1175.json'];
+queue_output = [masterPath '\queues\' '170822_temcaGTjob_1496_1738.json'];
 
 
 % saved mask templates for slot and section, respectively, in txt

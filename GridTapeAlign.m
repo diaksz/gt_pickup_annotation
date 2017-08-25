@@ -568,6 +568,7 @@ if tf % (if annotation file exists)
     h_probflag.Value = S.is_problematic;
     h_verflag.Value = S.is_verified;
 else
+    LoadNewMask(hfig,slot_mask_file,section_mask_file);
     h_probflag.Value = 0;
     h_verflag.Value = 0;
 end
@@ -795,7 +796,7 @@ pos_section(:,2) = pos_section(:,2)+translationArray(2);
 end
 
 function LoadNewMask(hfig,slot_mask_file,section_mask_file)
-S = getappdata(hfig,'S');
+%S = getappdata(hfig,'S');
 
 pos_slot_init = dlmread(slot_mask_file,' ',1,0);
 pos_section_init = dlmread(section_mask_file,' ',1,0);
@@ -809,8 +810,10 @@ M(masktypeID).pos_init = pos_slot_init;
 masktypeID = 2;
 M(masktypeID).pos_init = pos_section_init;
 
-pos_slot = S.slot.vertices;
-pos_section = S.section.vertices;
+pos_slot = pos_slot_init;
+pos_section = pos_section_init;
+%pos_slot = S.slot.vertices;
+%pos_section = S.section.vertices;
 %[pos_slot,pos_section] = ReconstitutePos(S,M); 
 % NB: this reconstitution is not correct for newly created masks, 
 % but approximately right assuming that the new mask is similar to 
