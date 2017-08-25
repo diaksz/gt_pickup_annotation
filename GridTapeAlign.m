@@ -124,6 +124,8 @@ uicontrol('Parent',tab{i_tab},'Style','pushbutton','String','Set mask files',...
     'Position',[grid(i) yrow(i_row) bwidth*n rheight],...
     'Callback',@pushbutton_getmasksdir_Callback);
 
+
+
 %% UI row 2: current section
 i_row = 2;
 i = 1;n = 0;
@@ -162,6 +164,11 @@ uicontrol('Parent',tab{i_tab},'Style','pushbutton','String','Next(''Right Click'
     'Position',[grid(i) yrow(i_row) bwidth*n rheight],...
     'Callback',@pushbutton_loadNextImage_Callback);
 
+i=i+n;
+n=2;
+uicontrol('Parent',tab{i_tab},'Style','pushbutton','String','Reset Masks',...
+    'Position',[grid(i) yrow(i_row) bwidth*n rheight],...
+    'Callback',@pushbutton_resetMasks_Callback);
 %% UI row 3: create masks, and flags
 i_row = 3;
 i = 1;n = 0;
@@ -289,6 +296,16 @@ end
 function pushbutton_loadNextImage_Callback(hObject,~)
 hfig = getParentFigure(hObject);
 LoadNextImage(hfig);
+end
+
+function pushbutton_resetMasks_Callback(hObject,~)
+hfig = getParentFigure(hObject);
+slot_mask_file = getappdata(hfig,'slot_mask_file');
+section_mask_file = getappdata(hfig,'section_mask_file');
+hpoly = getappdata(hfig,'hpoly');
+delete(hpoly);
+LoadNewMask(hfig,slot_mask_file,section_mask_file);
+DrawNewMask(hfig)
 end
 
 %% row 3: create masks, flags
