@@ -2,27 +2,26 @@
 %% ATK 170703
 
 startSectionID = 1;
-endSectionID = 3;
-skipList = [];
+endSectionID = 58;
+skipList = [9];
 write_json = 1;
 plot_imgs = 1;
-sectionList = startSectionID:endSectionID;
+sectionList = [31, 32, 58]; %startSectionID:endSectionID;
 sectionList = setdiff(sectionList,skipList);
 %% Set paths and load mask and image
 % master path
 if ispc
-    masterPath = '/home/lab/LGN_0085';
+    masterPath = K'/home/lab/LGN_0084';
 elseif isunix
-    masterPath = '/home/lab/LGN_0085';
+    masterPath = '/home/lab/LGN_0084';
 else
     disp('OS error - not Win or Unix');
 end
-queue_output = [masterPath '/queues/' 'test.json'];
-
+queue_output = [masterPath '/queues/lgn3696_r084_' date '_' num2str(startSectionID) '-' num2str(endSectionID) '.json'];
 
 % saved mask templates for slot and section, respectively, in txt
 slot_mask_file = [masterPath '/masks/' 'slot_mask_sect0010_170705.txt'];
-section_mask_file = [masterPath '/masks/' 'section_mask_sec-2_171031.txt'];
+section_mask_file = [masterPath '/masks/' 'section_mask_lgn_0084_sect54.txt'];
 %setappdata(hfig,'slot_mask_file',slot_mask_file);
 %setappdata(hfig,'section_mask_file',section_mask_file);
 
@@ -126,19 +125,20 @@ for i = 1:length(sectionList)
     
     % units are nm
     offset_nm = 20000; %AK 170809 reduced to 20, based on stdev of 16 um
-    width_nm = 1100000+2*offset_nm;
-    height_nm = 650000+2*offset_nm;
+    width_nm = 700000+2*offset_nm;
+    height_nm = 860000+2*offset_nm;
 
     
-    roi_TR_pxl_x = section(1,1)-slot_center_pxl(1);
-    roi_TR_pxl_y = section(1,2) - 0.4*(section(1,2)-section(2,2))-slot_center_pxl(2);
+    roi_TR_pxl_x = 0.72*section(2,1) + 0.28*section(5,1)-slot_center_pxl(1);
+    roi_TR_pxl_y = 0.5*section(1,2) + 0.5*section(6,2)-80-slot_center_pxl(2);
     
     %roi_TR_pxl = section(1,:)-slot_center_pxl;
-    roi_TR_nm = roi_TR_pxl/pxl_scale;  
+    roi_TR_nm = [roi_TR_pxl_x,roi_TR_pxl_y]/pxl_scale;  
     roi_TR_nm = -roi_TR_nm; % rotate 180 deg to match TEMCA-GT orientation
     
+  
     % check if corner is too close to slot (only checks bottom left (top right) for now)
-    slot_padding = 10000+offset_nm; % closest we allow the corner to be to slot
+    slot_padding = -40000+offset_nm; % closest we allow the corner to be to slot
     % AK adjusted slot_padding 170817
     % for now, treat the slot as 2x1.5, padding comes for free
     
@@ -151,23 +151,26 @@ for i = 1:length(sectionList)
     
     % check y
     if roi_TR_nm(2) < -.75*1e6+slot_padding;
-        height_nm = height_nm - (roi_TR_nm(2)-(.75*1e6-slot_padding)); % reduce ROI accordingly
+        height_nm = height_nm - (roi_TR_nm(2)-(-.75*1e6+slot_padding)); % reduce ROI accordingly
         roi_TR_nm(2) = -.75*1e6+slot_padding;
         disp('Corner off slot up, adjusting ROI');
     end
     
-    % check rounded corner
-    chamfer_center = [.5 -.25]*1e6;
-    chamfer_radius = 0.5*1e6;
-    offsetTR = [roi_TR_nm(1)-chamfer_center(1) roi_TR_nm(2)-chamfer_center(2)];
+%     % check rounded corner
+%     chamfer_center = [.5 -.25]*1e6;
+%     chamfer_radius = 0.5*1e6;
+%     offsetTR = [roi_TR_nm(1)-chamfer_center(1) roi_TR_nm(2)-chamfer_center(2)];
+%     
+%     if offsetTR(1) > 0 && offsetTR(2) < 0 && norm(offsetTR) > chamfer_radius - slot_padding
+%         roi_TR_nm = chamfer_center + (chamfer_radius-slot_padding)/norm(offsetTR)*offsetTR;
+%         disp_chamfer = offsetTR-(chamfer_radius-slot_padding)/norm(offsetTR)*offsetTR;
+%         width_nm = width_nm - abs(disp_chamfer(1));
+%         height_nm = height_nm - abs(disp_chamfer(2));
+%         disp('Corner off slot top right, adjusting ROI');
+%     end
+
     
-    if offsetTR(1) > 0 && offsetTR(2) < 0 && norm(offsetTR) > chamfer_radius - slot_padding
-        roi_TR_nm = chamfer_center + (chamfer_radius-slot_padding)/norm(offsetTR)*offsetTR;
-        disp_chamfer = offsetTR-(chamfer_radius-slot_padding)/norm(offsetTR)*offsetTR;
-        width_nm = width_nm - abs(disp_chamfer(1));
-        height_nm = height_nm - abs(disp_chamfer(2));
-        disp('Corner off slot top right, adjusting ROI');
-    end
+    
     %%%%%%%%%%%%%%%%%%%%%%%% TEMCA-GT FUDGE FACTOR %%%%%%%%%%%%%%%%%%%%%
     % add constant offset to account for slot-finding routine offset
     % fudge_factor = [ mean([.8921-.8515 .9581-.9422]) mean([-.4332+.5335 -.4062+.4968])];
@@ -227,7 +230,7 @@ end
         % Preprocess image to make easier to see edges
 left_crop = 300;%250;
 right_crop = 1280;%1280;
-top_crop = 350;%250;
+top_crop = 250;%250;
 bottom_crop = 850;%750;
         channel = 3; % blue channel seems to be the most informative
         num_levels = 20; % number of levels for histogram equalization
@@ -258,7 +261,7 @@ bottom_crop = 850;%750;
         
         
         F = frame2im(getframe(hfig1));%im2frame(C);
-        img_save_path = [masterPath '\annot_imgs\' num2str(sectionList(i)) '.png'];
+        img_save_path = [masterPath '/annot_imgs/' num2str(sectionList(i)) '.png'];
         imwrite(F,img_save_path);
     end
     

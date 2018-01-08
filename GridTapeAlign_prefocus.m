@@ -19,25 +19,23 @@ axis image
 %% Set paths and load mask and image
 % master path
 if ispc
-    %masterPath = '/home/lab/vnc1_r066/roi_generation';
-    masterPath = '/home/lab/170601_P26_Emx_SHH_wt2_r130';
+    masterPath = '/home/lab/gut';
+    %masterPath = '/home/lab/170601_P26_Emx_SHH_wt2_r130';
 elseif isunix
-    %masterPath = '/home/lab/vnc1_r066/roi_generation';
-    masterPath = '/home/lab/170601_P26_Emx_SHH_wt2_r130';
+    masterPath = '/home/lab/gut';
+    %masterPath = '/home/lab/170601_P26_Emx_SHH_wt2_r130';
 else
     disp('OS error - not Win or Unix');
 end
         
 % saved mask templates for slot and section, respectively, in txt
 slot_mask_file = [masterPath '/masks/' 'slotMask.txt'];
-section_mask_file = [masterPath '/masks/' 'dummySectionMask.txt'];
-%section_mask_file = [masterPath '/masks/' 'section_3_mask.txt'];
+section_mask_file = [masterPath '/masks/' 'section_3_mask.txt'];
 focus_mask_file = [masterPath '/masks/' 'focus_mask.txt'];
 
 setappdata(hfig,'slot_mask_file',slot_mask_file);
 setappdata(hfig,'section_mask_file',section_mask_file);
-setappdata(hfig,'focus_mask_file', focus_mask_file);
-
+%setappdata(hfig,'
 % output of annotation, in txt
 outputPath = [masterPath '/annotations']; % saves annotated relative positions to txt, for each individual section
 if exist(outputPath,'dir')~=7
@@ -51,13 +49,12 @@ ParseImageDir(hfig,imPath);
 
 %% Init section
 % load first section
-disp("Load first section")
 i_im = 1;
 setappdata(hfig,'i_im',i_im);
 secID = GetSectionIDfromCounter(hfig,i_im);
-S = ScanText_GTA(secID,outputPath,slot_mask_file,section_mask_file, focus_mask_file);
+S = ScanText_GTA(secID,outputPath,slot_mask_file,section_mask_file);
 setappdata(hfig,'S',S);
-LoadNewMask(hfig,slot_mask_file,section_mask_file, focus_mask_file);
+LoadNewMask(hfig,slot_mask_file,section_mask_file);
 
 % structure for individual slots:
 % S = [];
@@ -236,16 +233,14 @@ function pushbutton_getmasksdir_Callback(hObject,~)
 hfig = getParentFigure(hObject);
 [FileName1,PathName] = uigetfile('*.txt','Select the txt file for slot mask');
 slot_mask_file = fullfile(PathName,FileName1);
-[FileName2,PathName] = uigetfile('*.txt','Select the txt file for section mask');
+[FileName2,PathName] = uigetfile('*.txt','Select the txt file for slot mask');
 section_mask_file = fullfile(PathName,FileName2);
-[FileName3,PathName] = uigetfile('*.txt','Select the txt file for focus mask');
-focus_mask_file = fullfile(PathName,FileName3);
 
 if isequal(FileName1,0) || isequal(FileName2,0),
     disp('User selected Cancel')
 else
     try
-        LoadNewMask(hfig,slot_mask_file,section_mask_file, focus_mask_file);
+        LoadNewMask(hfig,slot_mask_file,section_mask_file);
         % reload current image
         i_im = getappdata(hfig,'i_im');
         LoadImage(hfig,i_im);
@@ -253,7 +248,6 @@ else
         % (set path if didn't crash)
         setappdata(hfig,'slot_mask_file',slot_mask_file);
         setappdata(hfig,'section_mask_file',section_mask_file);
-        setappdata(hfig,'focus_mask_file',focus_mask_file);
     catch
         errordlg('failed to load new masks');
     end
@@ -312,10 +306,9 @@ function pushbutton_resetMasks_Callback(hObject,~)
 hfig = getParentFigure(hObject);
 slot_mask_file = getappdata(hfig,'slot_mask_file');
 section_mask_file = getappdata(hfig,'section_mask_file');
-focus_mask_file = getappdata(hfig,'focus_mask_file');
 hpoly = getappdata(hfig,'hpoly');
 delete(hpoly);
-LoadNewMask(hfig,slot_mask_file,section_mask_file,focus_mask_file);
+LoadNewMask(hfig,slot_mask_file,section_mask_file);
 DrawNewMask(hfig)
 end
 
@@ -467,7 +460,7 @@ end
 
 function ParseImageDir(hfig,imPath)
 setappdata(hfig,'imPath',imPath);
-imList = dir(fullfile(imPath, '*png')); %needs to be changed from png to tif for vnc1
+imList = dir(fullfile(imPath, '*png'));
 numFiles = length(imList);
 
 fileIDs = zeros(numFiles,1);
@@ -542,7 +535,7 @@ end
 % update S data (relangle is updated directly through Rotation function)
 S.slot.translation = GetCenterPos(M(1).pos) - GetCenterPos(M(1).pos_init);
 S.section.translation = GetCenterPos(M(2).pos) - GetCenterPos(M(2).pos_init);
-S.focus.translation = GetCenterPos(M(3).pos) - GetCenterPos(M(3).pos_init);
+
 setappdata(hfig,'S',S);
 
 % write to text file
@@ -561,8 +554,8 @@ secID = GetSectionIDfromCounter(hfig,i_im);
 outputPath = getappdata(hfig,'outputPath');
 slot_mask_file = getappdata(hfig,'slot_mask_file');
 section_mask_file = getappdata(hfig,'section_mask_file');
-focus_mask_file = getappdata(hfig,'focus_mask_file');
-[S,tf] = ScanText_GTA(secID,outputPath,slot_mask_file,section_mask_file, focus_mask_file);
+focus_mask_file = getappdata(hfig,'focus_mask_file')
+[S,tf] = ScanText_GTA(secID,outputPath,slot_mask_file,section_mask_file);
 setappdata(hfig,'S',S);
 
 % %% set flags and set pos from file
@@ -627,15 +620,15 @@ end
 axes(gca);
 
 % Preprocess image to make easier to see edges
-left_crop = 250; %1 for vnc1
-right_crop = 1280; %1012 for vnc1
-top_crop = 1;
-bottom_crop = 478;
+left_crop = 1;%250;
+right_crop = 1100;%1280;
+top_crop = 200;
+bottom_crop = 750;
 channel = 3; % blue channel seems to be the most informative
 num_levels = 20; % number of levels for histogram equalization
-imshow(histeq(im_raw(top_crop:bottom_crop,left_crop:right_crop),20),gray(255));
-%imshow(histeq(im_raw(top_crop:bottom_crop,left_crop:right_crop),20),jet(255));
-%image(im_raw(top_crop:bottom_crop,left_crop:right_crop,:));
+%imshow(histeq(im_raw(top_crop:bottom_crop,left_crop:right_crop,3),20),gray(255));
+%imshow(histeq(im_raw(top_crop:bottom_crop,left_crop:right_crop,3),20),jet(255));
+image(im_raw(top_crop:bottom_crop,left_crop:right_crop,:));
 %imagesc(im_raw);
 axis equal; axis off
 % setappdata(hfig,'im_raw',im_raw);
@@ -651,7 +644,7 @@ if tf % (if annotation file exists)
 
     pos_slot_init = dlmread(slot_mask_file,' ',1,0);
     pos_section_init = dlmread(section_mask_file,' ',1,0);
-    pos_focus_init = dlmread(focus_mask_file,' ',1,0);
+    
     % init mask struct
     M = [];
     
@@ -661,16 +654,11 @@ if tf % (if annotation file exists)
     masktypeID = 2;
     M(masktypeID).pos_init = pos_section_init;
     
-    masktypeID = 3;
-    M(masktypeID).pos_init = pos_focus_init;
-    
     pos_slot = S.slot.vertices;
     pos_section = S.section.vertices;
-    pos_focus = S.focus.vertices;
-    
+
     M(1).pos = pos_slot;
     M(2).pos = pos_section;
-    M(3).pos = pos_focus;
     
     setappdata(hfig,'M',M);
     
@@ -678,45 +666,40 @@ if tf % (if annotation file exists)
     h_probflag.Value = S.is_problematic;
     h_verflag.Value = S.is_verified;
 else
-    LoadNewMask(hfig,slot_mask_file,section_mask_file, focus_mask_file);
+    LoadNewMask(hfig,slot_mask_file,section_mask_file);
     h_probflag.Value = 0;
     h_verflag.Value = 0;
     
 %% find slot - LAT's threshold-and-label algorithm
-%     % this threshold is somewhat arbitrary...
-%     t = .5;
-%     if length(size(im_raw)) > 2
-%         bin_img = imbinarize(rgb2gray(im_raw(top_crop:bottom_crop,left_crop:right_crop,:)), t);
-%     else
-%         bin_img = imbinarize(im_raw(top_crop:bottom_crop,left_crop:right_crop,:), t);
-%     end
-%         % remove all small white dots (under 5000 pixel areas)
-%     bin_img = bwareaopen(bin_img,5000);
-%     bin_img = ~bin_img;
-%     % remove all small black dots ( under 5000 pixel areas)
-%     bin_img = bwareaopen(bin_img,5000);
-%     % get connnected components
-%     cc = bwconncomp(bin_img);
-%     if cc.NumObjects >= 1
-%         numPixels = cellfun(@numel, cc.PixelIdxList);
-%         [~, idx] = max(numPixels);
-%         props = regionprops(cc);
-%         centroid = props(idx).Centroid;
-%         boundBox = props(idx).BoundingBox;
-%         
-%         M = getappdata(hfig,'M');
-%         dc = centroid - GetCenterPos(M(1).pos);
-%        % M(1).pos(:,1) = M(1).pos(:,1) + dc(1);
-%         %M(1).pos(:,2) = M(1).pos(:,2) + dc(2);
-%         
-%         % picking left and top? side
-%         dx = (2*boundBox(1) - M(1).pos(1,1) - M(1).pos(2,1))/2.0;
-%         dy = (2*boundBox(2) - M(1).pos(4,2) - M(1).pos(3,2))/2.0;
-% 
-%         M(1).pos(:,1) = M(1).pos(:,1) + dx;
-%         M(1).pos(:,2) = M(1).pos(:,2) + dy;
-%         setappdata(hfig,'M',M);
-%     end
+    % this threshold is somewhat arbitrary...
+    bin_img = imbinarize(rgb2gray(im_raw(top_crop:bottom_crop,left_crop:right_crop,:)), .2);
+    % remove all small white dots (under 5000 pixel areas)
+    bin_img = bwareaopen(bin_img,5000);
+    bin_img = ~bin_img;
+    % remove all small black dots ( under 5000 pixel areas)
+    bin_img = bwareaopen(bin_img,5000);
+    % get connnected components
+    cc = bwconncomp(bin_img);
+    if cc.NumObjects >= 1
+        numPixels = cellfun(@numel, cc.PixelIdxList);
+        [~, idx] = max(numPixels);
+        props = regionprops(cc);
+        centroid = props(idx).Centroid;
+        boundBox = props(idx).BoundingBox;
+        
+        M = getappdata(hfig,'M');
+        dc = centroid - GetCenterPos(M(1).pos);
+       % M(1).pos(:,1) = M(1).pos(:,1) + dc(1);
+        %M(1).pos(:,2) = M(1).pos(:,2) + dc(2);
+        
+        % picking left and top? side
+        dx = (2*boundBox(1) - M(1).pos(1,1) - M(1).pos(2,1))/2.0;
+        dy = (2*boundBox(2) - M(1).pos(4,2) - M(1).pos(3,2))/2.0;
+
+        M(1).pos(:,1) = M(1).pos(:,1) + dx;
+        M(1).pos(:,2) = M(1).pos(:,2) + dy;
+        setappdata(hfig,'M',M);
+    end
 end
 
 %% find slot - JMS's linescan algorithm
@@ -765,18 +748,12 @@ delete(hpoly(masktypeID_old));
 if masktypeID_old==1
     masktypeID = 2;    
 elseif masktypeID_old==2
-% 180105 Uncomment to allow setting focus
-%     masktypeID = 3;
-% elseif masktypeID_old==3
     masktypeID = 1;
 end
-
 setappdata(hfig,'masktypeID',masktypeID);
 % redundant?
 M(1).isselected = 0;
 M(2).isselected = 0;
-M(3).isselected = 0;
-
 M(masktypeID).isselected = 1;
 
 % draw new mask
@@ -920,12 +897,12 @@ pos_section(:,2) = pos_section(:,2)+translationArray(2);
 
 end
 
-function LoadNewMask(hfig,slot_mask_file,section_mask_file, focus_mask_file)
+function LoadNewMask(hfig,slot_mask_file,section_mask_file)
 %S = getappdata(hfig,'S');
 
 pos_slot_init = dlmread(slot_mask_file,' ',1,0);
 pos_section_init = dlmread(section_mask_file,' ',1,0);
-pos_focus_init = dlmread(focus_mask_file,' ',1,0);
+
 % init mask struct
 M = [];
 
@@ -935,12 +912,8 @@ M(masktypeID).pos_init = pos_slot_init;
 masktypeID = 2;
 M(masktypeID).pos_init = pos_section_init;
 
-masktypeID = 3;
-M(masktypeID).pos_init = pos_focus_init;
-
 pos_slot = pos_slot_init;
 pos_section = pos_section_init;
-pos_focus = pos_focus_init;
 %pos_slot = S.slot.vertices;
 %pos_section = S.section.vertices;
 %[pos_slot,pos_section] = ReconstitutePos(S,M); 
@@ -949,7 +922,6 @@ pos_focus = pos_focus_init;
 % the old one (e.g. minor shape adjustment).
 M(1).pos = pos_slot;
 M(2).pos = pos_section;
-M(3).pos = pos_focus;
 
 setappdata(hfig,'M',M);
 end

@@ -1,28 +1,33 @@
 
 %% ATK 170703
 
-startSectionID = 1;
-endSectionID = 3;
+startSectionID = 4;
+endSectionID = 173;
 skipList = [];
+%for gut: skipList = [1,2,3,11,12,13,15,16,17,18,19,20,22,23,24,25,26,27,28,29,30,51,53,69,80,82,84,94,97,107,111,121,125,126,127,128,129,130,131,146,147,148,149,150,151];
+%for shh: skipList = [3,4,9,11,13,15,44,90,133,144,146,148,150,170,172,181,198,199,212,213,214,219,229,230,235];
 write_json = 1;
 plot_imgs = 1;
-sectionList = startSectionID:endSectionID;
-sectionList = setdiff(sectionList,skipList);
+%sectionList = startSectionID:endSectionID;
+sectionList = [173,99,21,4];
+sectionList = setdiff(sectionList,skipList,'stable');
 %% Set paths and load mask and image
 % master path
 if ispc
-    masterPath = '/home/lab/LGN_0085';
+    masterPath = '/home/lab/170601_P26_Emx_SHH_wt2_r130';
+    %masterPath = '/home/lab/170601_P26_Emx_SHH_wt2_r130';
 elseif isunix
-    masterPath = '/home/lab/LGN_0085';
+    masterPath = '/home/lab/170601_P26_Emx_SHH_wt2_r130';
+    %masterPath = '/home/lab/170601_P26_Emx_SHH_wt2_r130';
 else
     disp('OS error - not Win or Unix');
 end
-queue_output = [masterPath '/queues/' 'test.json'];
-
+queue_output = [masterPath '/queues/' date '_' num2str(startSectionID) '-' num2str(endSectionID) '.json'];
 
 % saved mask templates for slot and section, respectively, in txt
-slot_mask_file = [masterPath '/masks/' 'slot_mask_sect0010_170705.txt'];
-section_mask_file = [masterPath '/masks/' 'section_mask_sec-2_171031.txt'];
+slot_mask_file = [masterPath '/masks/' 'dummySlot.txt'];
+section_mask_file = [masterPath '/masks/' 'section_3_mask.txt'];
+focus_mask_file = [masterPath '/masks/' 'focus_mask.txt'];
 %setappdata(hfig,'slot_mask_file',slot_mask_file);
 %setappdata(hfig,'section_mask_file',section_mask_file);
 
@@ -79,9 +84,9 @@ if ~isempty(unverified) > 0
     error(['Unverified sections: ' num2str(unverified)]);
 end
 %%
-   
+tf = [];
 for i = 1:length(sectionList)
-    [S(sectionList(i)),tf(sectionList(i))] = ScanText_GTA(sectionList(i),outputPath,slot_mask_file,section_mask_file);
+    [S(sectionList(i)),tf(sectionList(i))] = ScanText_GTA(sectionList(i),outputPath,slot_mask_file,section_mask_file, focus_mask_file);
     f = fullfile(outputPath,[num2str(sectionList(i)),'.txt']);
     
     fid = fopen(f, 'rt');
@@ -94,6 +99,19 @@ for i = 1:length(sectionList)
     idx3 = find(strcmp(s{1}, 'SECTION'), 1, 'first');
     idx4 = find(strcmp(s{1}, 'NOITCES'), 1, 'first');
     section = dlmread(f,'',[idx3 0 idx4-2 1]);
+    
+    idx5 = find(strcmp(s{1}, 'FOCUS'), 1, 'first');
+    idx6 = find(strcmp(s{1}, 'SUCOF'), 1, 'first');
+    focus = [];
+    hasFocus = 0;
+    if ~isempty(idx5)
+        focus = dlmread(f,'',[idx5 0 idx6-2 1]);
+        if focus == [200 200]
+            focus = [];
+        else
+            hasFocus = 1;
+        end
+    end
     
     idx5 = find(strcmp(s{1}, 'FLAGS'), 1, 'first');
     flags = dlmread(f,'',[idx5+1 0 idx5+1 1]);
@@ -126,17 +144,24 @@ for i = 1:length(sectionList)
     
     % units are nm
     offset_nm = 20000; %AK 170809 reduced to 20, based on stdev of 16 um
-    width_nm = 1100000+2*offset_nm;
-    height_nm = 650000+2*offset_nm;
+    width_nm = 3000000+2*offset_nm;
+    height_nm = 750000+2*offset_nm;
 
+    if hasFocus
+        focus_pxl_x = focus(1,1)-slot_center_pxl(1);
+        focus_pxl_y = focus(1,2)-slot_center_pxl(2);
+        focus_nm = [focus_pxl_x,focus_pxl_y]/pxl_scale;
+        focus_nm = -focus_nm;
+    end
     
-    roi_TR_pxl_x = section(1,1)-slot_center_pxl(1);
-    roi_TR_pxl_y = section(1,2) - 0.4*(section(1,2)-section(2,2))-slot_center_pxl(2);
+    roi_TR_pxl_x = section(2,1)-slot_center_pxl(1);
+    roi_TR_pxl_y = section(11,2)-slot_center_pxl(2);
     
     %roi_TR_pxl = section(1,:)-slot_center_pxl;
-    roi_TR_nm = roi_TR_pxl/pxl_scale;  
+    roi_TR_nm = [roi_TR_pxl_x,roi_TR_pxl_y]/pxl_scale;  
     roi_TR_nm = -roi_TR_nm; % rotate 180 deg to match TEMCA-GT orientation
     
+  
     % check if corner is too close to slot (only checks bottom left (top right) for now)
     slot_padding = 10000+offset_nm; % closest we allow the corner to be to slot
     % AK adjusted slot_padding 170817
@@ -149,9 +174,15 @@ for i = 1:length(sectionList)
         disp('Corner off slot right, adjusting ROI');
     end
     
+    if roi_TR_nm(1) - width_nm < -1e6+slot_padding
+        disp("OK")
+        width_nm = roi_TR_nm(1) + 1e6-slot_padding
+    end
+
+    
     % check y
     if roi_TR_nm(2) < -.75*1e6+slot_padding;
-        height_nm = height_nm - (roi_TR_nm(2)-(.75*1e6-slot_padding)); % reduce ROI accordingly
+        height_nm = height_nm - (roi_TR_nm(2)-(-.75*1e6+slot_padding)); % reduce ROI accordingly
         roi_TR_nm(2) = -.75*1e6+slot_padding;
         disp('Corner off slot up, adjusting ROI');
     end
@@ -168,6 +199,9 @@ for i = 1:length(sectionList)
         height_nm = height_nm - abs(disp_chamfer(2));
         disp('Corner off slot top right, adjusting ROI');
     end
+
+    
+    
     %%%%%%%%%%%%%%%%%%%%%%%% TEMCA-GT FUDGE FACTOR %%%%%%%%%%%%%%%%%%%%%
     % add constant offset to account for slot-finding routine offset
     % fudge_factor = [ mean([.8921-.8515 .9581-.9422]) mean([-.4332+.5335 -.4062+.4968])];
@@ -196,13 +230,20 @@ for i = 1:length(sectionList)
     right_edge_nm = round(right_edge_nm);
     top_edge_nm = round(top_edge_nm);
     
+    if hasFocus
+        focus_nm = round(focus_nm + fudge_factor);
+    end
     %% Write json entry
 
     if write_json == 1
         fprintf(fileID,['"' num2str(sectionList(i)) '": {"rois": [{"width": ' num2str(width_nm) ', "right": ' ...
             sprintf('%0.0f',right_edge_nm) ', "top": ' sprintf('%0.0f',top_edge_nm)...
-            ', "height": ' num2str(height_nm) '}]}']);
-        if sectionList(i) == endSectionID
+            ', "height": ' num2str(height_nm) '}]']);
+        if hasFocus
+        fprintf(fileID,[',"focus_points":[[' num2str(focus_nm(1)) ',' num2str(focus_nm(2)) ']]']);
+        end    
+        fprintf(fileID,'}');
+        if sectionList(i) == sectionList(end)
             fprintf(fileID,'}');
         else
             fprintf(fileID,', ');
@@ -225,10 +266,10 @@ end
         figure(hfig1);
         
         % Preprocess image to make easier to see edges
-left_crop = 300;%250;
-right_crop = 1280;%1280;
-top_crop = 350;%250;
-bottom_crop = 850;%750;
+left_crop = 1;%250;
+right_crop = 1100;%1280;
+top_crop = 200;
+bottom_crop = 750;
         channel = 3; % blue channel seems to be the most informative
         num_levels = 20; % number of levels for histogram equalization
         A2 = histeq(im_raw(top_crop:bottom_crop,left_crop:right_crop,3),20);
@@ -238,6 +279,10 @@ bottom_crop = 850;%750;
         
         % plot slot center
         plot(slot_center_pxl(:,1),slot_center_pxl(:,2),'mo','Linewidth',3);
+        
+        if hasFocus
+            plot( focus(:,1), focus(:,2), 'ro', 'Linewidth',4);
+        end
         
         % plot section outline
         section_outline = vertcat(section, section(1,:));
@@ -258,7 +303,7 @@ bottom_crop = 850;%750;
         
         
         F = frame2im(getframe(hfig1));%im2frame(C);
-        img_save_path = [masterPath '\annot_imgs\' num2str(sectionList(i)) '.png'];
+        img_save_path = [masterPath '/annot_imgs/' num2str(sectionList(i)) '.png'];
         imwrite(F,img_save_path);
     end
     

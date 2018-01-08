@@ -19,11 +19,11 @@ axis image
 %% Set paths and load mask and image
 % master path
 if ispc
-    %masterPath = '/home/lab/vnc1_r066/roi_generation';
-    masterPath = '/home/lab/170601_P26_Emx_SHH_wt2_r130';
+    masterPath = '/home/lab/vnc1_r066/roi_generation';
+    %masterPath = '/home/lab/170601_P26_Emx_SHH_wt2_r130';
 elseif isunix
-    %masterPath = '/home/lab/vnc1_r066/roi_generation';
-    masterPath = '/home/lab/170601_P26_Emx_SHH_wt2_r130';
+    masterPath = '/home/lab/vnc1_r066/roi_generation';
+    %masterPath = '/home/lab/170601_P26_Emx_SHH_wt2_r130';
 else
     disp('OS error - not Win or Unix');
 end
@@ -467,7 +467,7 @@ end
 
 function ParseImageDir(hfig,imPath)
 setappdata(hfig,'imPath',imPath);
-imList = dir(fullfile(imPath, '*png')); %needs to be changed from png to tif for vnc1
+imList = dir(fullfile(imPath, '*png')); % changed to tif for vnc1
 numFiles = length(imList);
 
 fileIDs = zeros(numFiles,1);
@@ -627,14 +627,14 @@ end
 axes(gca);
 
 % Preprocess image to make easier to see edges
-left_crop = 250; %1 for vnc1
-right_crop = 1280; %1012 for vnc1
+left_crop = 1;%250;
+right_crop = 1012;%1280;
 top_crop = 1;
 bottom_crop = 478;
 channel = 3; % blue channel seems to be the most informative
 num_levels = 20; % number of levels for histogram equalization
-imshow(histeq(im_raw(top_crop:bottom_crop,left_crop:right_crop),20),gray(255));
-%imshow(histeq(im_raw(top_crop:bottom_crop,left_crop:right_crop),20),jet(255));
+%imshow(histeq(im_raw(top_crop:bottom_crop,left_crop:right_crop,3),20),gray(255));
+imshow(histeq(im_raw(top_crop:bottom_crop,left_crop:right_crop),20),jet(255));
 %image(im_raw(top_crop:bottom_crop,left_crop:right_crop,:));
 %imagesc(im_raw);
 axis equal; axis off
@@ -683,40 +683,39 @@ else
     h_verflag.Value = 0;
     
 %% find slot - LAT's threshold-and-label algorithm
-%     % this threshold is somewhat arbitrary...
-%     t = .5;
-%     if length(size(im_raw)) > 2
-%         bin_img = imbinarize(rgb2gray(im_raw(top_crop:bottom_crop,left_crop:right_crop,:)), t);
-%     else
-%         bin_img = imbinarize(im_raw(top_crop:bottom_crop,left_crop:right_crop,:), t);
-%     end
-%         % remove all small white dots (under 5000 pixel areas)
-%     bin_img = bwareaopen(bin_img,5000);
-%     bin_img = ~bin_img;
-%     % remove all small black dots ( under 5000 pixel areas)
-%     bin_img = bwareaopen(bin_img,5000);
-%     % get connnected components
-%     cc = bwconncomp(bin_img);
-%     if cc.NumObjects >= 1
-%         numPixels = cellfun(@numel, cc.PixelIdxList);
-%         [~, idx] = max(numPixels);
-%         props = regionprops(cc);
-%         centroid = props(idx).Centroid;
-%         boundBox = props(idx).BoundingBox;
-%         
-%         M = getappdata(hfig,'M');
-%         dc = centroid - GetCenterPos(M(1).pos);
-%        % M(1).pos(:,1) = M(1).pos(:,1) + dc(1);
-%         %M(1).pos(:,2) = M(1).pos(:,2) + dc(2);
-%         
-%         % picking left and top? side
-%         dx = (2*boundBox(1) - M(1).pos(1,1) - M(1).pos(2,1))/2.0;
-%         dy = (2*boundBox(2) - M(1).pos(4,2) - M(1).pos(3,2))/2.0;
-% 
-%         M(1).pos(:,1) = M(1).pos(:,1) + dx;
-%         M(1).pos(:,2) = M(1).pos(:,2) + dy;
-%         setappdata(hfig,'M',M);
-%     end
+    % this threshold is somewhat arbitrary...
+    if length(size(im_raw)) > 2
+        bin_img = imbinarize(rgb2gray(im_raw(top_crop:bottom_crop,left_crop:right_crop,:)), .2);
+    else
+        bin_img = imbinarize(rgb2gray(im_raw(top_crop:bottom_crop,left_crop:right_crop,:)), .2);
+    end
+        % remove all small white dots (under 5000 pixel areas)
+    bin_img = bwareaopen(bin_img,5000);
+    bin_img = ~bin_img;
+    % remove all small black dots ( under 5000 pixel areas)
+    bin_img = bwareaopen(bin_img,5000);
+    % get connnected components
+    cc = bwconncomp(bin_img);
+    if cc.NumObjects >= 1
+        numPixels = cellfun(@numel, cc.PixelIdxList);
+        [~, idx] = max(numPixels);
+        props = regionprops(cc);
+        centroid = props(idx).Centroid;
+        boundBox = props(idx).BoundingBox;
+        
+        M = getappdata(hfig,'M');
+        dc = centroid - GetCenterPos(M(1).pos);
+       % M(1).pos(:,1) = M(1).pos(:,1) + dc(1);
+        %M(1).pos(:,2) = M(1).pos(:,2) + dc(2);
+        
+        % picking left and top? side
+        dx = (2*boundBox(1) - M(1).pos(1,1) - M(1).pos(2,1))/2.0;
+        dy = (2*boundBox(2) - M(1).pos(4,2) - M(1).pos(3,2))/2.0;
+
+        M(1).pos(:,1) = M(1).pos(:,1) + dx;
+        M(1).pos(:,2) = M(1).pos(:,2) + dy;
+        setappdata(hfig,'M',M);
+    end
 end
 
 %% find slot - JMS's linescan algorithm
@@ -765,9 +764,8 @@ delete(hpoly(masktypeID_old));
 if masktypeID_old==1
     masktypeID = 2;    
 elseif masktypeID_old==2
-% 180105 Uncomment to allow setting focus
-%     masktypeID = 3;
-% elseif masktypeID_old==3
+    masktypeID = 3;
+elseif masktypeID_old==3
     masktypeID = 1;
 end
 
