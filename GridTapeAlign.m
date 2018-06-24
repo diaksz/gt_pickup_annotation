@@ -20,17 +20,17 @@ axis image
 % master path
 if ispc
     %masterPath = '/home/lab/vnc1_r066/roi_generation';
-    masterPath = '/home/lab/170601_P26_Emx_SHH_wt2_r130';
+    masterPath = '/home/joseph_s/SHH2';
 elseif isunix
     %masterPath = '/home/lab/vnc1_r066/roi_generation';
-    masterPath = '/home/lab/170601_P26_Emx_SHH_wt2_r130';
+    masterPath = '/home/joseph_s/SHH2';
 else
     disp('OS error - not Win or Unix');
 end
         
 % saved mask templates for slot and section, respectively, in txt
 slot_mask_file = [masterPath '/masks/' 'slotMask.txt'];
-section_mask_file = [masterPath '/masks/' 'dummySectionMask.txt'];
+section_mask_file = [masterPath '/masks/' 'sectionMask_503.txt'];
 %section_mask_file = [masterPath '/masks/' 'section_3_mask.txt'];
 focus_mask_file = [masterPath '/masks/' 'focus_mask.txt'];
 
@@ -53,7 +53,10 @@ ParseImageDir(hfig,imPath);
 % load first section
 disp("Load first section")
 i_im = 1;
-setappdata(hfig,'i_im',i_im);
+setappdata(hfig,'i_im',i_im);slot_mask_file = [masterPath '/masks/' 'slotMask.txt'];
+section_mask_file = [masterPath '/masks/' 'sectionMask_503.txt'];
+%section_mask_file = [masterPath '/masks/' 'section_3_mask.txt'];
+focus_mask_file = [masterPath '/masks/' 'focus_mask.txt'];
 secID = GetSectionIDfromCounter(hfig,i_im);
 S = ScanText_GTA(secID,outputPath,slot_mask_file,section_mask_file, focus_mask_file);
 setappdata(hfig,'S',S);
@@ -71,7 +74,10 @@ LoadNewMask(hfig,slot_mask_file,section_mask_file, focus_mask_file);
 % S.is_verified = 0;
    
 %% Create UI controls
-set(gcf,'DefaultUicontrolUnits','normalized');
+set(gcf,'DefaultUicontrolUnits','normalized');slot_mask_file = [masterPath '/masks/' 'slotMask.txt'];
+section_mask_file = [masterPath '/masks/' 'sectionMask_503.txt'];
+%section_mask_file = [masterPath '/masks/' 'section_3_mask.txt'];
+focus_mask_file = [masterPath '/masks/' 'focus_mask.txt'];
 set(gcf,'defaultUicontrolBackgroundColor',[1 1 1]);
 
 % tab group setup
@@ -146,7 +152,10 @@ i=i+n;
 n=2;
 h_i_im = uicontrol('Parent',tab{i_tab},'Style','edit',...
     'Position',[grid(i) yrow(i_row) bwidth*n rheight],...
-    'Callback',@edit_imageCount_Callback);
+    'Callback',@edit_imageCount_Callback);slot_mask_file = [masterPath '/masks/' 'slotMask.txt'];
+section_mask_file = [masterPath '/masks/' 'sectionMask_503.txt'];
+%section_mask_file = [masterPath '/masks/' 'section_3_mask.txt'];
+focus_mask_file = [masterPath '/masks/' 'focus_mask.txt'];
 
 i=i+n;
 n=2;
@@ -627,13 +636,15 @@ end
 axes(gca);
 
 % Preprocess image to make easier to see edges
-left_crop = 250; %1 for vnc1
-right_crop = 1280; %1012 for vnc1
-top_crop = 1;
-bottom_crop = 478;
+%left_crop = 0; %1 for vnc1
+%right_crop = 1000; %1012 for vnc1
+%top_crop = 1;
+%bottom_crop = 500;
 channel = 3; % blue channel seems to be the most informative
 num_levels = 20; % number of levels for histogram equalization
-imshow(histeq(im_raw(top_crop:bottom_crop,left_crop:right_crop),20),gray(255));
+%imshow(histeq(im_raw(top_crop:bottom_crop,left_crop:right_crop),20),jet(255));
+imshow(histeq(im_raw(:,:,3),20),jet(255));
+
 %imshow(histeq(im_raw(top_crop:bottom_crop,left_crop:right_crop),20),jet(255));
 %image(im_raw(top_crop:bottom_crop,left_crop:right_crop,:));
 %imagesc(im_raw);
