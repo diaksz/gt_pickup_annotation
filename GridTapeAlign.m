@@ -20,17 +20,17 @@ axis image
 % master path
 if ispc
     %masterPath = '/home/lab/vnc1_r066/roi_generation';
-    masterPath = '/home/joseph_s/SHH2';
+    masterPath = '/home/aaron/SHH2';
 elseif isunix
     %masterPath = '/home/lab/vnc1_r066/roi_generation';
-    masterPath = '/home/joseph_s/SHH2';
+    masterPath = '/home/aaron/SHH2';
 else
     disp('OS error - not Win or Unix');
 end
         
 % saved mask templates for slot and section, respectively, in txt
-slot_mask_file = [masterPath '/masks/' 'slotMask.txt'];
-section_mask_file = [masterPath '/masks/' 'sectionMask_503.txt'];
+slot_mask_file = [masterPath '/masks/' 'slot_mask_180628.txt'];
+section_mask_file = [masterPath '/masks/' 'section_mask_features_448_180628.txt'];
 %section_mask_file = [masterPath '/masks/' 'section_3_mask.txt'];
 focus_mask_file = [masterPath '/masks/' 'focus_mask.txt'];
 
@@ -49,14 +49,12 @@ setappdata(hfig,'outputPath',outputPath);
 imPath = [masterPath '/img_links']; % contains images of individual sections
 ParseImageDir(hfig,imPath);
 
+
 %% Init section
 % load first section
-disp("Load first section")
+disp('Load first section')
 i_im = 1;
-setappdata(hfig,'i_im',i_im);slot_mask_file = [masterPath '/masks/' 'slotMask.txt'];
-section_mask_file = [masterPath '/masks/' 'sectionMask_503.txt'];
-%section_mask_file = [masterPath '/masks/' 'section_3_mask.txt'];
-focus_mask_file = [masterPath '/masks/' 'focus_mask.txt'];
+setappdata(hfig,'i_im',i_im);
 secID = GetSectionIDfromCounter(hfig,i_im);
 S = ScanText_GTA(secID,outputPath,slot_mask_file,section_mask_file, focus_mask_file);
 setappdata(hfig,'S',S);
